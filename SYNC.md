@@ -21,6 +21,11 @@ git push mine main
   地址直连（不经过 SSH 隧道）、网页模式与插件岛适配；以及若干状态修复。
 - **工具**：`tooling/release-arm64.sh`，内部版本号每包 +1，用户可见版本号
   只有明确决定后才改；打出的 arm64 release **不含本地引擎**。
+- **Windows 桌面客户端（分支 `windows-remote-client`，未合入 `main`）**：纯远程，
+  不内置引擎；新增 `app/windows/`、`app/lib/desktop/`、`app/lib/main_desktop.dart`、
+  `tooling/build-windows.sh`。桌面入口用 provider override 注入通知/托盘/WebView2
+  平台实现，`root_gate.dart`、`hosts_state.dart` 与业务 WebView 文件均零改动。
+  构建：`tooling/build-windows.sh --debug|--release`。x64 已验证；arm64 未验证。
 
 ## 签名
 

@@ -26,6 +26,9 @@ final androidSystemFeaturesProvider = Provider<bool>(
 /// Whether flutter_webrtc has an implementation here, for DSH Remote's direct path.
 final webRtcAvailableProvider = Provider<bool>((ref) => webRtcOn(ref.watch(operatingSystemProvider)));
 
-bool androidSystemFeaturesOn(String os) => os != 'ohos' && os != 'ios';
+/// Windows is a remote-only desktop client: it has no phone control, pet
+/// overlay, refresh-rate caps, Linux-guest rescue tools or relay direct link,
+/// so it hides the same set iOS does.
+bool androidSystemFeaturesOn(String os) => os != 'ohos' && os != 'ios' && os != 'windows';
 
 bool webRtcOn(String os) => os != 'ohos';

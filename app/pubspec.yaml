@@ -47,6 +47,14 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   webview_flutter: ^4.14.1
   webview_flutter_android: ^4.14.1
+  # Windows desktop notifications and tray (app/lib/desktop/). Desktop-only; no mobile use.
+  local_notifier: ^0.1.6
+  # 0.5.x API: works on Flutter < 3.50 too, so both dev machines stay compatible.
+  tray_manager: 0.5.2
+  window_manager: 0.5.2
+  # Windows WebView2 backend for the platform-interface shim (lib/desktop/).
+  # Desktop-only; the mobile webview_flutter_android path is untouched.
+  webview_flutter_windows: ^1.3.1
   gpt_markdown: ^1.4.0
   # gpt_markdown's own maths engine, used directly for the formula fallback.
   val_latex_flutter: ^0.1.3

@@ -66,6 +66,7 @@ class HttpHostLink implements HostLink {
   final _clients = StreamController<DshClient>.broadcast();
   final _delay = InterruptibleDelay();
   StreamSubscription<void>? _kickSub;
+  StreamSubscription<DshConnectionState>? _muxSub;
   HostLinkStatus _status = HostLinkStatus.idle;
   DshClient? _client;
   Future<DshClient>? _opening;
@@ -183,6 +184,7 @@ class HttpHostLink implements HostLink {
       throw StateError('link closed');
     }
     _client = client;
+    _watchMux(client);
     if (previous != null) unawaited(previous.close().catchError((_) {}));
     _emit(HostLinkStatus(HostLinkPhase.connected, completed: HostLinkStep.values.toSet()));
     if (_published) _clients.add(client);
@@ -239,6 +241,34 @@ class HttpHostLink implements HostLink {
     return DshCookie(name: name, value: value, authority: authority, expiresAt: expiresAt);
   }
 
+  /// The Host's session cookie can expire long after the initial Basic login.
+  /// The mux then stops with `unauthorized` (401 or 403); without a watcher the
+  /// link keeps reporting "connected" with a client that cannot talk. Mirror
+  /// SshLink: drop that client and re-run the whole Basic → cookie → mux login
+  /// so a still-valid saved password silently renews the session.
+  void _watchMux(DshClient client) {
+    unawaited(_muxSub?.cancel());
+    _muxSub = client.mux.states.listen((state) {
+      if (state != DshConnectionState.unauthorized || !identical(client, _client)) return;
+      unawaited(_muxSub?.cancel());
+      _muxSub = null;
+      _client = null;
+      unawaited(client.close().catchError((_) {}));
+      _emit(
+        HostLinkStatus(
+          HostLinkPhase.reconnecting,
+          error: HostLinkError(
+            HostLinkErrorKind.loginFailed,
+            appL10n.remoteErrDshSignInExpired,
+            retryable: true,
+          ),
+        ),
+      );
+      // `retry()` refuses while the status says reconnecting; open() does not.
+      unawaited(open(force: true).then((_) {}, onError: (_) {}));
+    });
+  }
+
   @override
   void kick() {
     if (_status.phase == HostLinkPhase.reconnecting) {
@@ -262,6 +292,7 @@ class HttpHostLink implements HostLink {
     _closed = true;
     _delay.cancel();
     await _kickSub?.cancel();
+    await _muxSub?.cancel();
     final client = _client;
     _client = null;
     if (client != null) await client.close().catchError((_) {});
