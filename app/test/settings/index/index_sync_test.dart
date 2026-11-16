@@ -61,7 +61,12 @@ final Map<SettingsPageId, List<String Function(L10n)>> _unlisted = {
     (l) => l.performanceFollowMode,
   ],
   SettingsPageId.pets: [(l) => l.botsPetShowNow, (l) => l.botsPetSwitchDisabled, (l) => l.botsPetHiddenToday],
-  SettingsPageId.remote: [(l) => l.remoteWebConsole],
+  SettingsPageId.remote: [
+    (l) => l.remoteWebConsole,
+    // HTTP hosts are laid out as their own section, not a spot-anchored row.
+    (l) => l.remoteAddHttpHost,
+    (l) => l.remoteHttpDirect,
+  ],
 };
 
 /// Entries whose row shows the thing itself rather than the page's name
