@@ -33,3 +33,6 @@ site/build/
 
 # Release assets (tooling/release_assets.py)
 /dist/
+
+# internal build counter (per machine, never shared)
+tooling/.release-build-number
