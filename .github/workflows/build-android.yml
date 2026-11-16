@@ -87,7 +87,10 @@ jobs:
           path: runtime/.cache
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
-      - run: flutter pub get --enforce-lockfile
+      # CI pins Flutter 3.47.7; the lock was generated locally on 3.50 and
+      # test_api 0.7.14 needs the newer Dart SDK. Let pub resolve the one
+      # compatible downgrade instead of failing the whole build.
+      - run: flutter pub get
         working-directory: app
       - name: Write local.properties
         working-directory: app

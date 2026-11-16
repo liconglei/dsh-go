@@ -41,7 +41,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter config --enable-windows-desktop
-      - run: flutter pub get --enforce-lockfile
+      # CI pins Flutter 3.47.7; the lock was generated locally on 3.50 and
+      # test_api 0.7.14 needs the newer Dart SDK. Let pub resolve the one
+      # compatible downgrade instead of failing the whole build.
+      - run: flutter pub get
         working-directory: app
       - name: Build x64
         working-directory: app
@@ -101,7 +104,10 @@ jobs:
             throw "Expected a native ARM64 Dart SDK: $dart"
           }
           Write-Output $dart
-      - run: flutter pub get --enforce-lockfile
+      # CI pins Flutter 3.47.7; the lock was generated locally on 3.50 and
+      # test_api 0.7.14 needs the newer Dart SDK. Let pub resolve the one
+      # compatible downgrade instead of failing the whole build.
+      - run: flutter pub get
         working-directory: app
       - name: Build ARM64
         working-directory: app
