@@ -42,8 +42,9 @@ final petHostChoicesProvider = Provider<List<PetHostChoice>>((ref) {
   final current = ref.watch(activeHostProvider);
   final hosts = <(HostRef, String)>[
     (HostRef.local, appL10n.commonThisPhone),
-    for (final h in ref.watch(hostsProvider).ssh)
+    for (final h in ref.watch(hostsProvider).sshHosts)
       if (h.hostKeyFingerprint != null) (HostRef.ssh(h.id), hostLabel(HostKind.ssh, h.name)),
+    for (final h in ref.watch(hostsProvider).httpHosts) (HostRef.http(h.id), hostLabel(HostKind.http, h.name)),
     for (final h in ref.watch(relayAccountProvider).value?.hosts ?? <RelayHost>[])
       if (h.trust == RelayTrust.pinned) (HostRef.relay(h.id, name: h.name), hostLabel(HostKind.relay, h.name)),
   ];

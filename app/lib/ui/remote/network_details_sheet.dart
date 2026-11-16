@@ -62,6 +62,7 @@ class _RemoteNetworkDetailsSheetState extends ConsumerState<RemoteNetworkDetails
     final status = ref.watch(hostLinkStatusProvider(widget.host)).value ?? HostLinkStatus.idle;
     final name = ref.watch(hostNameProvider(widget.host)) ?? l10n.commonRemoteHost;
     final relay = widget.host.kind == HostKind.relay;
+    final http = widget.host.kind == HostKind.http;
     final connected = status.isConnected;
     final network = connected && relay ? status.network : null;
     final path = connected && relay ? network?.path ?? status.path : null;
@@ -97,12 +98,15 @@ class _RemoteNetworkDetailsSheetState extends ConsumerState<RemoteNetworkDetails
             SheetGroup(
               children: [
                 _NetworkValue(label: l10n.remoteHost, value: name),
-                _NetworkValue(label: l10n.hostDetailsConnectionType, value: relay ? 'DSH Remote' : 'SSH'),
+                _NetworkValue(
+                  label: l10n.hostDetailsConnectionType,
+                  value: relay ? 'DSH Remote' : (http ? 'HTTP' : 'SSH'),
+                ),
                 _NetworkValue(label: l10n.commonStatus, value: status.summary),
                 _NetworkValue(
                   label: l10n.remoteNetworkCurrentPath,
                   value: connected && widget.host.kind == HostKind.ssh
-                      ? 'SSH'
+                      ? (http ? 'HTTP' : 'SSH')
                       : path?.label ?? l10n.remoteNetworkUnknownPath,
                 ),
                 _NetworkValue(label: l10n.remoteNetworkConnectDuration, value: timing(network?.connectDuration)),

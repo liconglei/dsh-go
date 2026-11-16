@@ -28730,6 +28730,66 @@ abstract class L10n {
   /// **'精简 简洁 历史 工具 传输 流量 远程 compact slim lite'**
   String get searchKwRemoteCompactHistory;
 
+  /// No description provided for @remoteHttpDirect.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP 直连'**
+  String get remoteHttpDirect;
+
+  /// No description provided for @remoteHttpDirectHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'不经 SSH，直接访问加了账号密码保护的 DSH 网页服务；主机地址填完整 URL（含 https://），密码只保存在这台手机。'**
+  String get remoteHttpDirectHelp;
+
+  /// No description provided for @remoteHttpDirectUrlInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写完整的 https:// 地址；仅本机或内网可用 http://，不要把账号密码写在网址里。'**
+  String get remoteHttpDirectUrlInvalid;
+
+  /// No description provided for @remoteHttpHosts.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP 主机'**
+  String get remoteHttpHosts;
+
+  /// No description provided for @remoteHttpHostRequirements.
+  ///
+  /// In zh, this message translates to:
+  /// **'填好网址和账号密码就能连，不需要 SSH'**
+  String get remoteHttpHostRequirements;
+
+  /// No description provided for @remoteAddHttpHost.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 HTTP 主机'**
+  String get remoteAddHttpHost;
+
+  /// No description provided for @remoteHttpHostIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接加了账号密码保护的 DSH 网址'**
+  String get remoteHttpHostIntro;
+
+  /// No description provided for @remoteHttpUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'网址'**
+  String get remoteHttpUrl;
+
+  /// No description provided for @remoteHttpCredentialHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录这个网址所需的账号和密码；密码只保存在这台手机，由 Android Keystore 加密。'**
+  String get remoteHttpCredentialHelp;
+
+  /// No description provided for @remoteConnectedHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接 · HTTP {address}'**
+  String remoteConnectedHttp(String address);
+
   /// No description provided for @remotePairEntry.
   ///
   /// In zh, this message translates to:

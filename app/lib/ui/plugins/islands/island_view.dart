@@ -10,6 +10,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../l10n/l10n.dart';
 import '../../../plugins/seams/seat_models.dart';
+import '../../../state/hosts_state.dart';
 import '../../common/app_dialog.dart';
 import '../../common/smooth_size.dart';
 import '../../theme/theme.dart';
@@ -149,6 +150,9 @@ class _IslandViewState extends ConsumerState<IslandView> {
       theme: _theme(context),
       labels: widget.labels,
       visible: _visible(context),
+      // HTTP hosts sit behind their own account; the island's WebView answers
+      // the challenge with the saved one instead of showing Android's dialog.
+      basicAuth: widget.spec.host.kind == HostKind.http ? httpBasicAuthFor(ref, widget.spec.host.id) : null,
     );
     _acquiring = false;
     if (!mounted || generation != _generation) {

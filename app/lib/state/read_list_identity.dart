@@ -212,6 +212,26 @@ final readListIdentityProvider = Provider<ReadListIdentity?>((ref) {
       if ((connection?.workingDirectory?.length ?? 0) > 4096) return null;
       final resolved = ref.watch(_resolvedDirectoriesProvider).observe(config.digest, connection);
       return ReadListIdentity.of([config.digest, resolved]);
+    case HostKind.http:
+      final hosts = ref.watch(hostsProvider);
+      final host = hosts.httpById(selected.id);
+      if (!hosts.loaded || host == null) return null;
+      // Nothing to pin against an HTTP host: the saved address, the account and
+      // the credential epoch are its identity.
+      if (host.id.length > 256 ||
+          host.connectionKey.length > 8192 ||
+          (host.workingDirectory?.length ?? 0) > 4096) {
+        return null;
+      }
+      final httpConfig = ReadListIdentity.of([
+        'http',
+        host.id,
+        host.connectionKey,
+        host.workingDirectory,
+        epoch,
+      ]);
+      final httpResolved = ref.watch(_resolvedDirectoriesProvider).observe(httpConfig.digest, connection);
+      return ReadListIdentity.of([httpConfig.digest, httpResolved]);
     case HostKind.relay:
       final account = ref.watch(relayAccountProvider);
       if (account.isLoading || account.hasError) return null;

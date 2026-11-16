@@ -48,6 +48,7 @@ class WebViewPage extends StatefulWidget {
     this.root = false,
     this.link,
     this.onSession,
+    this.basicAuth,
   });
 
   final Uri url;
@@ -100,6 +101,14 @@ class WebViewPage extends StatefulWidget {
   /// With [dshWeb]: the conversation on screen, whenever it changes (from
   /// the client's stored selection; null for none).
   final ValueChanged<String?>? onSession;
+
+  /// Answers the Host's HTTP Basic challenge with the account saved for it.
+  ///
+  /// A Host reached over HTTP(S) sits behind its own password: the WebView gets
+  /// 401 like any browser and would show Android's credential dialog. Read on
+  /// demand so the password never sits in a widget field, and null when the
+  /// page needs no account (loopback tunnel, local engine).
+  final Future<({String user, String password})?> Function()? basicAuth;
 
   bool get _adapt => dshWeb && phoneLayout;
 
@@ -672,7 +681,21 @@ class _WebViewPageState extends State<WebViewPage> {
     unawaited(_setUp(controller));
   }
 
+  /// The saved account for this page, read once per load. A challenge can
+  /// arrive on any navigation, and the password must not live in a field.
+  Future<({String user, String password})?> _basicCredentials() async {
+    final read = widget.basicAuth;
+    if (read == null) return null;
+    try {
+      return await read();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _setUp(WebViewController controller) async {
+    // Read before the delegate: the challenge can arrive on the first load.
+    final basic = await _basicCredentials();
     await Future.wait(
       [
         controller.setJavaScriptMode(JavaScriptMode.unrestricted),
@@ -681,6 +704,12 @@ class _WebViewPageState extends State<WebViewPage> {
           NavigationDelegate(
             // DSH Web keeps to its own origin; other pages open in the browser.
             onNavigationRequest: widget.dshWeb ? _onDshWebNavigation : null,
+            // A Host behind an account: answer with the saved one instead of
+            // showing Android's credential dialog.
+            onHttpAuthRequest: basic == null
+                ? null
+                : (request) =>
+                      request.onProceed(WebViewCredential(user: basic.user, password: basic.password)),
             onPageStarted: (_) {
               if (!mounted || _gone || controller != _controller) return;
               _files.invalidate();

@@ -97,6 +97,7 @@ class IslandHost extends ChangeNotifier {
     required IslandTheme theme,
     List<String> labels = const [],
     bool visible = true,
+    Future<({String user, String password})?> Function()? basicAuth,
   }) async {
     final warm = _live[spec.key];
     if (warm != null && warm.phase != IslandPhase.closed && warm.phase != IslandPhase.failed && warm.url == url) {
@@ -111,7 +112,9 @@ class IslandHost extends ChangeNotifier {
     if (target == null) return null;
     // From here on no awaits until the island is in the pool: two views
     // asking at once must see each other.
-    if (_live.containsKey(spec.key)) return acquire(spec, url: url, theme: theme, labels: labels, visible: visible);
+    if (_live.containsKey(spec.key)) {
+      return acquire(spec, url: url, theme: theme, labels: labels, visible: visible, basicAuth: basicAuth);
+    }
     final evict = evictionsFor(spec.form, _liveView, max, key: spec.key);
     if (evict == null) return null;
     for (final key in evict) {
@@ -131,6 +134,7 @@ class IslandHost extends ChangeNotifier {
             assets: assets,
             platform: platform,
             theme: theme,
+            basicAuth: basicAuth,
             onPhase: _onPhase,
           )
           ..views = 1

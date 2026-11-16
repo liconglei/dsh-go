@@ -629,9 +629,21 @@ class ChatController extends Notifier<ChatState> {
     _listen(client, pulse, building: true);
     // The stream gives up after a long outage: follow again once reconnected.
     final buildOwner = ref;
+    // `mux.states` is a broadcast stream with no replay: a stream that
+    // resubscribes after a drop would keep whatever it last saw and leave the
+    // header on 「重新连接中」 for good. Seed the current state, then keep it in
+    // step here, where the subscription never restarts.
+    _transcript.connectionState = client.mux.state;
     _states = client.mux.states.listen((connection) {
       if (!buildOwner.mounted || !identical(client, _client)) return;
-      if (connection != DshConnectionState.connected) _markSyncing();
+      _transcript.connectionState = connection;
+      if (connection != DshConnectionState.connected) {
+        _markSyncing();
+      } else {
+        // Nothing else may repaint on a plain reconnect: the header would stay
+        // on the last state it published.
+        _publish();
+      }
       final stopping = _stoppingOperation;
       if (stopping != null && !_currentOperation(stopping)) _endStopping();
       if (connection == DshConnectionState.connected && _watchEnded) {

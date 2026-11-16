@@ -5,7 +5,9 @@ import 'dart:math' as math;
 enum SshAuthMethod { password, privateKey }
 
 /// Whether the app owns the remote DSH process or only opens a tunnel to it.
-enum SshDshMode { managed, attachOnly }
+/// [httpDirect] skips SSH entirely and reaches `dsh web` over HTTP(S) with a
+/// pre-emptive Basic Authorization header.
+enum SshDshMode { managed, attachOnly, httpDirect }
 
 /// The remote `dsh web` launch command used when none is configured.
 const defaultDshLaunchCommand = 'dsh web';
@@ -58,7 +60,10 @@ class SshHostConfig {
   final String? hostKeyType;
   final String? hostKeyFingerprint;
 
-  String get address => port == 22 ? '$user@$host' : '$user@$host:$port';
+  /// [host] carries the full URL when [dshMode] is [SshDshMode.httpDirect].
+  String get address => dshMode == SshDshMode.httpDirect
+      ? host
+      : (port == 22 ? '$user@$host' : '$user@$host:$port');
 
   bool get usesDefaultCommand => launchCommand.trim() == defaultDshLaunchCommand;
 
@@ -140,7 +145,10 @@ class SshHostConfig {
       auth: SshAuthMethod.values.firstWhere((m) => m.name == raw['auth'], orElse: () => SshAuthMethod.password),
       launchCommand: command is String && command.trim().isNotEmpty ? command : defaultDshLaunchCommand,
       workingDirectory: cwd is String && cwd.trim().isNotEmpty ? cwd : null,
-      dshMode: raw['dshMode'] == 'attachOnly' ? SshDshMode.attachOnly : SshDshMode.managed,
+      dshMode: SshDshMode.values.firstWhere(
+        (m) => m.name == raw['dshMode'],
+        orElse: () => SshDshMode.managed,
+      ),
       remotePort: remotePort is int && remotePort > 0 && remotePort < 65536 ? remotePort : 3080,
       compression: raw['compression'] is bool ? raw['compression'] as bool : true,
       hostKeyType: raw['hostKeyType'] as String?,

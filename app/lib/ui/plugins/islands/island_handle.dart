@@ -81,6 +81,7 @@ class IslandHandle extends ChangeNotifier {
     required IslandAssets assets,
     required IslandPlatform platform,
     required IslandTheme theme,
+    this.basicAuth,
     this.onPhase,
   }) : _assets = assets, // ignore: prefer_initializing_formals
        _platform = platform, // ignore: prefer_initializing_formals
@@ -88,6 +89,9 @@ class IslandHandle extends ChangeNotifier {
        _initialTheme = theme;
 
   final IslandSpec spec;
+
+  /// Answers an HTTP host's Basic challenge for the island's WebView.
+  final Future<({String user, String password})?> Function()? basicAuth;
 
   /// The launch URL (`/?token=…`).
   final Uri url;
@@ -190,6 +194,8 @@ class IslandHandle extends ChangeNotifier {
   /// Creates the WebView, takes it over on the Android side, loads.
   Future<void> start() async {
     clock.start();
+    // Before the delegate: the challenge can arrive on the first load.
+    final basic = await _basicCredentials();
     controller = WebViewController(onPermissionRequest: (request) => unawaited(request.deny()));
     await Future.wait<void>(
       [
@@ -199,6 +205,9 @@ class IslandHandle extends ChangeNotifier {
         controller.setNavigationDelegate(
           NavigationDelegate(
             onNavigationRequest: _onNavigation,
+            onHttpAuthRequest: basic == null
+                ? null
+                : (request) => request.onProceed(WebViewCredential(user: basic.user, password: basic.password)),
             onPageStarted: (_) => _files.invalidate(),
             onPageFinished: (_) => unawaited(_inject()),
             onWebResourceError: (error) {
@@ -223,6 +232,17 @@ class IslandHandle extends ChangeNotifier {
     if (_phase != IslandPhase.loading) return;
     _readyTimer = Timer(recipe?.ready ?? IslandTiming.ready, () => _fail(IslandFailure.timeout));
     await controller.loadRequest(_loadUrl).catchError((Object _) => _fail(IslandFailure.load));
+  }
+
+  /// The account for this island's Host, read once per load.
+  Future<({String user, String password})?> _basicCredentials() async {
+    final read = basicAuth;
+    if (read == null) return null;
+    try {
+      return await read();
+    } catch (_) {
+      return null;
+    }
   }
 
   /// webview_flutter_android's `AndroidWebViewController.webViewIdentifier`,

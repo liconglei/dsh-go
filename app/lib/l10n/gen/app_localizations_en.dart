@@ -16547,6 +16547,41 @@ class L10nEn extends L10n {
   String get searchKwRemoteCompactHistory => 'compact slim lite history tools transfer bandwidth remote';
 
   @override
+  String get remoteHttpDirect => 'HTTP direct';
+
+  @override
+  String get remoteHttpDirectHelp =>
+      'Reach a password-protected DSH web service without SSH. Enter the full URL (including https://) as the host; the password stays in secure storage on this phone.';
+
+  @override
+  String get remoteHttpDirectUrlInvalid =>
+      'Enter a full https:// URL. http:// is allowed only on loopback or private hosts, and never put credentials in the URL.';
+
+  @override
+  String get remoteHttpHosts => 'HTTP hosts';
+
+  @override
+  String get remoteHttpHostRequirements => 'A URL and the account it asks for; no SSH needed';
+
+  @override
+  String get remoteAddHttpHost => 'Add HTTP host';
+
+  @override
+  String get remoteHttpHostIntro => 'Connect to a DSH address behind a password';
+
+  @override
+  String get remoteHttpUrl => 'URL';
+
+  @override
+  String get remoteHttpCredentialHelp =>
+      'The account this address asks for when signing in. The password stays on this phone, encrypted by Android Keystore.';
+
+  @override
+  String remoteConnectedHttp(String address) {
+    return 'Connected · HTTP $address';
+  }
+
+  @override
   String get remotePairEntry => 'Pair a computer by scanning';
 
   @override

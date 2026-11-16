@@ -9663,6 +9663,23 @@
   "remoteErrHistoryModeChanged": "主机已不支持精简历史，请切换到其他主机后再连回来，或重启 App，重新加载历史",
   "remoteCompactHistoryHint": "支持的 DSH Remote 主机会精简历史工具详情，实时回复和审批不变。切换主机或重启 App 后生效；旧主机仍传输完整历史。",
   "searchKwRemoteCompactHistory": "精简 简洁 历史 工具 传输 流量 远程 compact slim lite",
+  "remoteHttpDirect": "HTTP 直连",
+  "remoteHttpDirectHelp": "不经 SSH，直接访问加了账号密码保护的 DSH 网页服务；主机地址填完整 URL（含 https://），密码只保存在这台手机。",
+  "remoteHttpDirectUrlInvalid": "请填写完整的 https:// 地址；仅本机或内网可用 http://，不要把账号密码写在网址里。",
+  "remoteHttpHosts": "HTTP 主机",
+  "remoteHttpHostRequirements": "填好网址和账号密码就能连，不需要 SSH",
+  "remoteAddHttpHost": "添加 HTTP 主机",
+  "remoteHttpHostIntro": "连接加了账号密码保护的 DSH 网址",
+  "remoteHttpUrl": "网址",
+  "remoteHttpCredentialHelp": "登录这个网址所需的账号和密码；密码只保存在这台手机，由 Android Keystore 加密。",
+  "remoteConnectedHttp": "已连接 · HTTP {address}",
+  "@remoteConnectedHttp": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
   "remotePairEntry": "扫码配对电脑",
   "remotePairEntryHint": "扫电脑上 Remote 插件显示的二维码，不用注册 Remote 账号（需要先登录 DeepSeek）",
   "remotePairAddComputer": "扫码添加电脑",

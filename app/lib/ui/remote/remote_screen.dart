@@ -22,12 +22,20 @@ import '../theme/theme.dart';
 import '../web/web_view_page.dart';
 import 'host_key_dialog.dart';
 import 'host_status.dart';
+import 'http_host_form.dart';
 import 'link_progress.dart';
 import 'network_details_sheet.dart';
 import 'pairing_page.dart';
 import 'relay_credit.dart';
 import 'relay_login_sheet.dart';
 import 'ssh_host_form.dart';
+
+/// The form that owns this config: an HTTP host never opens the SSH form (it
+/// would show fields it has no use for), and an SSH host never opens the
+/// account-and-password one.
+Widget hostFormPage(SshHostConfig config) => config.dshMode == SshDshMode.httpDirect
+    ? HttpHostFormPage(existing: config)
+    : SshHostFormPage(existing: config);
 
 /// 远程主机 (a list page): the computers and servers this phone can drive.
 ///
@@ -84,10 +92,22 @@ class RemoteScreen extends ConsumerWidget {
     if (nothingHere && ref.read(activeHostProvider).isLocal) await _use(context, ref, HostRef.ssh(saved.id));
   }
 
+  /// Same first-run shortcut as [_addSsh], for a host reached over HTTP(S).
+  Future<void> _addHttp(BuildContext context, WidgetRef ref) async {
+    final saved = await Navigator.of(context)
+        .push<SshHostConfig>(MaterialPageRoute(builder: (_) => const HttpHostFormPage()));
+    if (saved == null || !context.mounted) return;
+    final nothingHere = ref.read(localRuntimeProvider).status.runtimeMissing;
+    if (nothingHere && ref.read(activeHostProvider).isLocal) await _use(context, ref, HostRef.http(saved.id));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final ssh = ref.watch(hostsProvider.select((s) => s.ssh));
+    // Two kinds, two lists: an SSH tunnel and an HTTP host never share a
+    // section, and neither carries the other's fields.
+    final ssh = ref.watch(hostsProvider.select((s) => s.sshHosts));
+    final http = ref.watch(hostsProvider.select((s) => s.httpHosts));
     final active = ref.watch(activeHostProvider);
     final signedIn = ref.watch(relayAccountProvider.select((a) => a.value?.signedIn ?? false));
     void push(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
@@ -131,6 +151,27 @@ class RemoteScreen extends ConsumerWidget {
           ],
         ),
         SettingsSection(
+          title: l10n.remoteHttpHosts,
+          footer: Text(l10n.remoteHttpHostRequirements),
+          children: [
+            for (final h in http)
+              _SshRow(
+                config: h,
+                http: true,
+                active: active == HostRef.http(h.id),
+                onTap: () => _use(context, ref, HostRef.http(h.id)),
+                onEdit: () => push(HttpHostFormPage(existing: h)),
+              ),
+            SettingsTile(
+              icon: AppIcons.add,
+              tinted: false,
+              title: l10n.remoteAddHttpHost,
+              subtitle: http.isEmpty ? l10n.remoteHttpDirect : null,
+              onTap: () => unawaited(_addHttp(context, ref)),
+            ),
+          ],
+        ),
+        SettingsSection(
           title: l10n.remoteOtherMethods,
           children: [
             SettingsTile(
@@ -143,7 +184,7 @@ class RemoteScreen extends ConsumerWidget {
           ],
         ),
         // Only meaningful once there is a host to come back to.
-        if (ssh.isNotEmpty || signedIn)
+        if (ssh.isNotEmpty || http.isNotEmpty || signedIn)
           SettingsSection(
             title: l10n.remoteStartupSection,
             children: [
@@ -171,11 +212,14 @@ class _ActiveCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    // Watched before the early return so the dependency set never varies.
+    final httpHost = active.kind == HostKind.http;
     if (active.isLocal) return const SizedBox.shrink();
     final status = ref.watch(hostLinkStatusProvider(active)).value ?? HostLinkStatus.idle;
     final view = HostStatusView.ofLink(status);
     final name = ref.watch(hostNameProvider(active)) ?? l10n.commonRemoteHost;
-    final ssh = active.kind == HostKind.ssh ? ref.watch(hostsProvider).sshById(active.id) : null;
+    // Either wire: the status line names the address the person saved.
+    final ssh = active.isLocal ? null : ref.watch(hostsProvider).byRef(active);
     final error = status.error;
     // Errors a retry can't fix go to the host's settings (SSH) or the trust
     // check (relay) instead.
@@ -189,7 +233,10 @@ class _ActiveCard extends ConsumerWidget {
     // No runtime on this phone: 本机 is nowhere to go back to.
     final canGoLocal = ref.watch(localRuntimeProvider.select((s) => !s.status.runtimeMissing));
     return OverviewCard(
-      leading: OverviewGlyph(hostKindIcon(active.kind), tint: hostKindTint(active.kind)),
+      leading: OverviewGlyph(
+        httpHost ? AppIcons.webConsole : hostKindIcon(active.kind),
+        tint: hostKindTint(active.kind),
+      ),
       title: Text(l10n.remoteActiveHost(name)),
       subtitle: InkWell(
         onTap: active.kind == HostKind.relay && status.isConnected
@@ -200,7 +247,11 @@ class _ActiveCard extends ConsumerWidget {
             AnimatedStatusDot(tone: view.tone, size: 7),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(_statusLine(status, view, ssh?.address), maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                _statusLine(status, view, ssh?.address, http: httpHost),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (active.kind == HostKind.relay && status.isConnected) ...[
               const SizedBox(width: 6),
@@ -245,9 +296,8 @@ class _ActiveCard extends ConsumerWidget {
                     : needsSettings
                     ? (
                         l10n.remoteHostSettings,
-                        () =>
-                            Navigator.of(context)
-                                .push(MaterialPageRoute<void>(builder: (_) => SshHostFormPage(existing: ssh))),
+                        () => Navigator.of(context)
+                            .push(MaterialPageRoute<void>(builder: (_) => hostFormPage(ssh))),
                       )
                     : needsTrust
                     ? (
@@ -265,13 +315,15 @@ class _ActiveCard extends ConsumerWidget {
     );
   }
 
-  static String _statusLine(HostLinkStatus status, HostStatusView view, String? address) {
+  static String _statusLine(HostLinkStatus status, HostStatusView view, String? address, {bool http = false}) {
     if (status.phase == HostLinkPhase.reconnecting) {
       final why = status.error?.message;
       return why == null ? appL10n.remoteReconnectingEllipsis : appL10n.remoteReconnectReason(why);
     }
     if (status.phase == HostLinkPhase.connected) {
-      if (address != null) return appL10n.remoteConnectedSsh(address);
+      if (address != null) {
+        return http ? appL10n.remoteConnectedHttp(address) : appL10n.remoteConnectedSsh(address);
+      }
       final path = status.network?.path ?? status.path;
       return path == null ? appL10n.remoteConnectedEncrypted : appL10n.remoteConnectedVia(path.label);
     }
@@ -356,22 +408,35 @@ class _EdgeIconButton extends StatelessWidget {
 }
 
 class _SshRow extends ConsumerWidget {
-  const _SshRow({required this.config, required this.active, required this.onTap, required this.onEdit});
+  const _SshRow({
+    required this.config,
+    required this.active,
+    required this.onTap,
+    required this.onEdit,
+    this.http = false,
+  });
 
   final SshHostConfig config;
   final bool active;
   final VoidCallback onTap;
   final VoidCallback onEdit;
 
+  /// True for a host reached over HTTP(S) with an account, so the row carries
+  /// the web glyph instead of the terminal one. The plumbing below is shared.
+  final bool http;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final view = active ? watchHostStatus(ref, HostRef.ssh(config.id)) : null;
+    // An HTTP row must watch its own kind: HostRef.ssh(id) resolves to no host
+    // and would report 未连接 forever.
+    final hostRef = http ? HostRef.http(config.id) : HostRef.ssh(config.id);
+    final view = active ? watchHostStatus(ref, hostRef) : null;
     return Semantics(
       selected: active,
       inMutuallyExclusiveGroup: true,
       child: SettingsTile(
-        icon: hostKindIcon(HostKind.ssh),
+        icon: http ? AppIcons.webConsole : hostKindIcon(HostKind.ssh),
         tinted: false,
         title: config.name,
         subtitle: config.address,

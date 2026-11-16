@@ -83,7 +83,8 @@ class HostSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final active = ref.watch(activeHostProvider);
-    final ssh = ref.watch(hostsProvider.select((s) => s.ssh));
+    final ssh = ref.watch(hostsProvider.select((s) => s.sshHosts));
+    final http = ref.watch(hostsProvider.select((s) => s.httpHosts));
     final account = ref.watch(relayAccountProvider).value;
     final relayHosts = account?.signedIn == true ? account!.hosts : const <RelayHost>[];
 
@@ -133,6 +134,14 @@ class HostSheet extends ConsumerWidget {
                       subtitle: 'SSH · ${h.address}',
                       active: active == HostRef.ssh(h.id),
                       onTap: () => pick(HostRef.ssh(h.id)),
+                    ),
+                  for (final h in http)
+                    _HostRow(
+                      host: HostRef.http(h.id),
+                      title: h.name,
+                      subtitle: 'HTTP · ${h.address}',
+                      active: active == HostRef.http(h.id),
+                      onTap: () => pick(HostRef.http(h.id)),
                     ),
                   for (final h in relayHosts)
                     _HostRow(

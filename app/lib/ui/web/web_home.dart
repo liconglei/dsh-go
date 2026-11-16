@@ -171,6 +171,22 @@ class _WebHomeState extends ConsumerState<WebHome> {
         link: _link,
         onSession: _onSession,
       ),
+      HttpDshWeb(:final url, :final hostName, :final hostId) => WebViewPage(
+        // A layout switch: a new page.
+        key: ValueKey((url, phoneLayout)),
+        url: url,
+        title: context.l10n.webTitle,
+        subtitle: hostName,
+        // Android suspends the page in the background and its socket drops.
+        reloadAfterBackground: const Duration(seconds: 60),
+        dshWeb: true,
+        phoneLayout: phoneLayout,
+        leading: _handle,
+        root: true,
+        link: _link,
+        onSession: _onSession,
+        basicAuth: httpBasicAuthFor(ref, hostId),
+      ),
       NoDshWeb(:final reason) => _NoWeb(reason: reason, handle: _handle),
     };
     return ChatAlertHost(
@@ -309,7 +325,7 @@ class _WebEntryHostState extends ConsumerState<WebEntryHost> {
       case OpenChatEntry(:final host, :final sessionId):
         if (!mounted || !await DiscardGuard.confirmLeave(context) || !mounted) return;
         final hosts = ref.read(hostsProvider);
-        if (host.kind == HostKind.ssh && hosts.loaded && hosts.sshById(host.id) == null) {
+        if (host.kind != HostKind.local && hosts.loaded && hosts.byRef(host) == null) {
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.webChatGone)));
           return;
         }

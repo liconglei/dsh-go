@@ -44,6 +44,8 @@ bool islandHostAllowed(
 }) => switch (kind) {
   HostKind.relay => false,
   HostKind.ssh => true,
+  // Its WebView answers the Host's Basic challenge (see IslandHandle.basicAuth).
+  HostKind.http => true,
   HostKind.local => override || (reported == true && probed == RouteGuard.present),
 };
 
@@ -142,6 +144,11 @@ final islandHostUrlProvider = Provider.autoDispose.family<Uri?, HostRef>((ref, h
       final token = link is SshHostLink ? link.endpoint?.token : null;
       if (port == null || token == null) return null;
       return islandLaunchUri('http://127.0.0.1:$port', token);
+    case HostKind.http:
+      // No tunnel: the island loads from the saved address, and its WebView
+      // answers the Host's Basic challenge.
+      final url = Uri.tryParse(ref.watch(hostsProvider).httpById(host.id)?.host.trim() ?? '');
+      return url != null && url.hasAuthority ? url : null;
     case HostKind.relay:
       return null;
   }

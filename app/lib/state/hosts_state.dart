@@ -22,8 +22,13 @@ export '../remote/ssh/ssh_transport.dart' show PresentedHostKey;
 export '../remote/relay/relay_backend.dart' show RelayHost, RelayTrust, RelayUser;
 export '../remote/ssh/ssh_host_config.dart';
 
-/// The three kinds of DSH host the app can talk to.
-enum HostKind { local, ssh, relay }
+/// The four kinds of DSH host the app can talk to.
+///
+/// `ssh` and `http` differ in transport, not in what they are: both are hosts
+/// the person configured. They are separate kinds so every exhaustive switch
+/// has to decide what an HTTP host looks like, instead of silently treating it
+/// as a tunnel.
+enum HostKind { local, ssh, http, relay }
 
 /// Identifies a host: the on-device engine, a saved SSH host, or a relay
 /// (ds-harness-remote) device. Equality is by kind + id; [name] is only a
@@ -34,6 +39,9 @@ class HostRef {
   static const local = HostRef._(HostKind.local, 'local');
 
   const HostRef.ssh(String id) : this._(HostKind.ssh, id);
+
+  /// A host reached over HTTP(S) with an account and password.
+  const HostRef.http(String id) : this._(HostKind.http, id);
 
   const HostRef.relay(String id, {String? name}) : this._(HostKind.relay, id, name);
 
@@ -55,6 +63,7 @@ class HostRef {
       if (id is! String || id.isEmpty) return local;
       return switch (map['kind']) {
         'ssh' => HostRef.ssh(id),
+        'http' => HostRef.http(id),
         'relay' => HostRef.relay(id, name: name is String ? name : null),
         _ => local,
       };
@@ -73,16 +82,33 @@ class HostRef {
   String toString() => 'HostRef(${kind.name}:$id)';
 }
 
-/// Chat-header label for a connection: "本机", "电脑 · SSH", "家里的 Mac · 远程".
+/// Chat-header label for a connection: "本机", "电脑 · SSH", "nas-dsh · HTTP",
+/// "家里的 Mac · 远程".
 String hostLabel(HostKind kind, String? name) => switch (kind) {
   HostKind.local => appL10n.commonThisPhone,
   HostKind.ssh => '${_short(name ?? appL10n.stateSshHost)} · SSH',
+  HostKind.http => '${_short(name ?? appL10n.stateSshHost)} · HTTP',
   HostKind.relay => appL10n.stateHostRemoteLabel(_short(name ?? appL10n.commonRemoteHost)),
 };
 
 String _short(String name) {
   final t = name.trim();
   return t.length <= 14 ? t : '${t.substring(0, 13)}…';
+}
+
+/// The account saved for an HTTP host, read when a WebView is challenged.
+///
+/// A closure rather than a value: the challenge can arrive long after the page
+/// was built, and the password must not sit in provider or widget state.
+Future<({String user, String password})?> Function() httpBasicAuthFor(WidgetRef ref, String hostId) {
+  return () async {
+    final hosts = ref.read(hostsProvider);
+    final config = hosts.sshById(hostId) ?? hosts.httpById(hostId);
+    if (config == null) return null;
+    final password = await ref.read(hostsProvider.notifier).loadPassword(hostId);
+    if (password == null || password.isEmpty) return null;
+    return (user: config.user, password: password);
+  };
 }
 
 // ── Secrets ──────────────────────────────────────────────────────────────────
@@ -95,15 +121,41 @@ final secretStoreProvider = Provider<SecretStore>((ref) => SecureSecretStore());
 class HostsState {
   const HostsState({this.ssh = const [], this.loaded = false});
 
+  /// Every configured host, whichever wire it uses. One stored list, never
+  /// two: [SshHostConfig.dshMode] says whether it is a tunnel or an account.
+  /// The name is historical; [sshHosts]/[httpHosts] are the two views.
   final List<SshHostConfig> ssh;
   final bool loaded;
 
+  /// Hosts reached through an SSH tunnel (managed or attach-only).
+  List<SshHostConfig> get sshHosts =>
+      [for (final h in ssh) if (h.dshMode != SshDshMode.httpDirect) h];
+
+  /// Hosts reached over HTTP(S) with an account and password.
+  List<SshHostConfig> get httpHosts =>
+      [for (final h in ssh) if (h.dshMode == SshDshMode.httpDirect) h];
+
   SshHostConfig? sshById(String id) {
     for (final h in ssh) {
-      if (h.id == id) return h;
+      if (h.id == id && h.dshMode != SshDshMode.httpDirect) return h;
     }
     return null;
   }
+
+  SshHostConfig? httpById(String id) {
+    for (final h in ssh) {
+      if (h.id == id && h.dshMode == SshDshMode.httpDirect) return h;
+    }
+    return null;
+  }
+
+  /// The saved config for [host], whichever wire it uses.
+  SshHostConfig? byRef(HostRef host) => switch (host.kind) {
+    HostKind.local => null,
+    HostKind.ssh => sshById(host.id),
+    HostKind.http => httpById(host.id),
+    HostKind.relay => null,
+  };
 }
 
 /// Saved SSH hosts: configs in SharedPreferences, secrets in [SecretStore].
@@ -206,6 +258,16 @@ class HostsController extends Notifier<HostsState> {
     );
   }
 
+  /// The saved password alone. An HTTP host has no key, passphrase or launch
+  /// token, so its link asks for exactly this instead of the whole [SshSecrets].
+  Future<String?> loadPassword(String id) async {
+    try {
+      return await _secrets.read(SshSecrets.passwordKey(id));
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Removes the host and its secrets; switches back to 本机 if it was active.
   Future<void> removeSsh(String id) async {
     await _loaded;
@@ -215,7 +277,9 @@ class HostsController extends Notifier<HostsState> {
         await _secrets.delete(key);
       } catch (_) {}
     }
-    unawaited(ref.read(activeHostProvider.notifier).forget((h) => h == HostRef.ssh(id)));
+    unawaited(
+      ref.read(activeHostProvider.notifier).forget((h) => h == HostRef.ssh(id) || h == HostRef.http(id)),
+    );
   }
 
   /// Trust on first use: remembers the key the person accepted.
@@ -326,7 +390,18 @@ class ActiveHostController extends Notifier<HostRef> {
     final owner = ref;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final restored = HostRef.decode(prefs.getString(prefsKey));
+      var restored = HostRef.decode(prefs.getString(prefsKey));
+      // Builds before the split stored an HTTP host under kind `ssh`. Its
+      // config is unchanged, so point the ref at the same id under the right
+      // kind — otherwise the header reads "远程主机 · 未连接" with nothing to fix.
+      if (restored.kind == HostKind.ssh) {
+        await ref.read(hostsProvider.notifier).ready;
+        final hosts = ref.read(hostsProvider);
+        if (hosts.sshById(restored.id) == null && hosts.httpById(restored.id) != null) {
+          restored = HostRef.http(restored.id);
+          unawaited(prefs.setString(prefsKey, restored.encode()).catchError((_) => false));
+        }
+      }
       final autoConnect = prefs.getBool(RemoteAutoConnectController.prefsKey) ?? true;
       if (!_touched && owner.mounted && autoConnect) state = restored;
     } catch (_) {
@@ -574,6 +649,9 @@ class RelayAccountState {
 /// DSH Remote account: login via browser + polling, host list with presence.
 class RelayAccountController extends AsyncNotifier<RelayAccountState> {
   RelayLoginSession? _login;
+
+  /// The epoch that turned `loggingIn` on; only it may turn the banner off.
+  int? _loginEpoch;
   int _epoch = 0;
 
   RelayBackend get _backend => ref.read(relayBackendProvider);
@@ -635,6 +713,7 @@ class RelayAccountController extends AsyncNotifier<RelayAccountState> {
     if (_now.loggingIn) return;
     final backend = _backend;
     final epoch = ++_epoch;
+    _loginEpoch = epoch;
     ref.read(readListCredentialEpochProvider.notifier).advance();
     state = AsyncData(_now.copyWith(loggingIn: true, error: () => null));
     try {
@@ -653,7 +732,15 @@ class RelayAccountController extends AsyncNotifier<RelayAccountState> {
       if (!opened) {
         state = AsyncData(_now.copyWith(error: () => appL10n.stateHostBrowserFailed));
       }
-      final user = await session.completed;
+      // Nobody is forced to finish in the browser: a closed tab must not leave
+      // the remote page on a spinner forever.
+      final user = await session.completed.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          session.cancel();
+          throw TimeoutException('relay sign-in timed out');
+        },
+      );
       if (!_isCurrent(epoch, backend)) return;
       var failed = false;
       final hosts = await backend.listHosts(refresh: true).catchError((Object _) {
@@ -674,12 +761,22 @@ class RelayAccountController extends AsyncNotifier<RelayAccountState> {
         ),
       );
     } finally {
-      if (_isCurrent(epoch, backend)) _login = null;
+      if (_isCurrent(epoch, backend)) {
+        _login = null;
+        _loginEpoch = null;
+      } else if (ref.mounted && _loginEpoch == epoch && _now.loggingIn) {
+        // This attempt still owns the banner but can never finish (the backend
+        // was replaced): take it down rather than leave 登录… on screen. A
+        // newer retry owns its own epoch, so it is never disturbed here.
+        _loginEpoch = null;
+        state = AsyncData(_now.copyWith(loggingIn: false, loginUrl: () => null));
+      }
     }
   }
 
   void cancelLogin() {
     _cancelPendingLogin();
+    _loginEpoch = null;
     state = AsyncData(_now.copyWith(loggingIn: false, loginUrl: () => null));
   }
 

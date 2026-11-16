@@ -15726,6 +15726,38 @@ class L10nZh extends L10n {
   String get searchKwRemoteCompactHistory => '精简 简洁 历史 工具 传输 流量 远程 compact slim lite';
 
   @override
+  String get remoteHttpDirect => 'HTTP 直连';
+
+  @override
+  String get remoteHttpDirectHelp => '不经 SSH，直接访问加了账号密码保护的 DSH 网页服务；主机地址填完整 URL（含 https://），密码只保存在这台手机。';
+
+  @override
+  String get remoteHttpDirectUrlInvalid => '请填写完整的 https:// 地址；仅本机或内网可用 http://，不要把账号密码写在网址里。';
+
+  @override
+  String get remoteHttpHosts => 'HTTP 主机';
+
+  @override
+  String get remoteHttpHostRequirements => '填好网址和账号密码就能连，不需要 SSH';
+
+  @override
+  String get remoteAddHttpHost => '添加 HTTP 主机';
+
+  @override
+  String get remoteHttpHostIntro => '连接加了账号密码保护的 DSH 网址';
+
+  @override
+  String get remoteHttpUrl => '网址';
+
+  @override
+  String get remoteHttpCredentialHelp => '登录这个网址所需的账号和密码；密码只保存在这台手机，由 Android Keystore 加密。';
+
+  @override
+  String remoteConnectedHttp(String address) {
+    return '已连接 · HTTP $address';
+  }
+
+  @override
   String get remotePairEntry => '扫码配对电脑';
 
   @override

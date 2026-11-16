@@ -33,6 +33,19 @@ final class SshDshWeb extends DshWebAccess {
   final String hostName;
 }
 
+/// An HTTP(S) host: the Host's own web UI at the address the person typed,
+/// behind the same account the app signs in with.
+///
+/// There is no tunnel, so the page goes to the real address instead of
+/// `127.0.0.1:<port>`; [hostId] lets the page ask for the saved password when
+/// the Host issues its 401 (see [WebViewPage.basicAuth]).
+final class HttpDshWeb extends DshWebAccess {
+  const HttpDshWeb(this.url, this.hostName, this.hostId);
+  final Uri url;
+  final String hostName;
+  final String hostId;
+}
+
 /// No web page for this host right now; [reason] says why.
 final class NoDshWeb extends DshWebAccess {
   const NoDshWeb(this.reason);
@@ -47,6 +60,16 @@ final dshWebAccessProvider = Provider.autoDispose<DshWebAccess>((ref) {
       return const LocalDshWeb();
     case HostKind.relay:
       return NoDshWeb(appL10n.webRelayUnavailable);
+    case HostKind.http:
+      // No tunnel: the saved address is the page's address, reachable even
+      // before the link has connected.
+      final name = ref.watch(hostNameProvider(host)) ?? appL10n.webSshHost;
+      final config = ref.watch(hostsProvider).httpById(host.id);
+      final url = Uri.tryParse(config?.host.trim() ?? '');
+      if (config == null || url == null || !url.hasAuthority) {
+        return NoDshWeb(appL10n.webConnectHostFirst(name));
+      }
+      return HttpDshWeb(url, name, config.id);
     case HostKind.ssh:
       // Rebuild once the link connects (or reconnects to a new process).
       ref.watch(hostLinkStatusProvider(host));
@@ -105,6 +128,19 @@ void openDshWeb(BuildContext context, WidgetRef ref, {DshWebTarget target = cons
         dshWeb: true,
         phoneLayout: ref.read(settingsProvider).webPhoneLayout,
         openTarget: target,
+      );
+    case HttpDshWeb(:final url, :final hostName, :final hostId):
+      page = WebViewPage(
+        url: url,
+        title: context.l10n.webTitle,
+        subtitle: hostName,
+        // Same socket rule as the tunnel; the account is answered on challenge
+        // instead of being pre-sent, so a password change needs no rebuild.
+        reloadAfterBackground: const Duration(seconds: 60),
+        dshWeb: true,
+        phoneLayout: ref.read(settingsProvider).webPhoneLayout,
+        openTarget: target,
+        basicAuth: httpBasicAuthFor(ref, hostId),
       );
     case NoDshWeb(:final reason):
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(reason)));

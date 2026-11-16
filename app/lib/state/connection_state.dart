@@ -5,6 +5,7 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
+import '../remote/http/http_host_link.dart';
 import '../remote/link_status.dart';
 import '../remote/network_watch.dart';
 import '../remote/relay/relay_backend.dart';
@@ -160,11 +161,18 @@ final sshTransportFactoryProvider = Provider<SshTransportFactory>((ref) => DartS
 
 /// Builds the link for one remote host. Overridable so tests can inject fake
 /// transports.
-typedef SshLinkFactory = SshHostLink Function(Ref ref, SshHostConfig config);
+typedef SshLinkFactory = HostLink Function(Ref ref, SshHostConfig config);
 
 final sshLinkFactoryProvider = Provider<SshLinkFactory>(
   (ref) => (ref, config) {
     final hosts = ref.read(hostsProvider.notifier);
+    if (config.dshMode == SshDshMode.httpDirect) {
+      return HttpHostLink(
+        config: config,
+        loadPassword: () => hosts.loadPassword(config.id),
+        kicks: ref.read(networkKicksProvider),
+      );
+    }
     return SshHostLink(
       config: config,
       loadSecrets: () => hosts.loadSecrets(config.id),
@@ -193,8 +201,20 @@ final hostLinkProvider = Provider.autoDispose.family<HostLink?, HostRef>((ref, h
       final link = ref.read(sshLinkFactoryProvider)(ref, config);
       // Renames, cwd and re-pinned keys apply in place.
       ref.listen(hostsProvider.select((s) => s.sshById(host.id)), (_, next) {
-        if (next != null && next.connectionKey == link.config.connectionKey) link.updateConfig(next);
+        final ssh = link is SshHostLink ? link : null;
+        if (ssh != null && next != null && next.connectionKey == ssh.config.connectionKey) {
+          ssh.updateConfig(next);
+        }
       });
+      ref.onDispose(() => unawaited(link.close()));
+      return link;
+    case HostKind.http:
+      // Address and account live in `connectionKey`, so an edit rebuilds this
+      // provider instead of mutating the link in place.
+      final key = ref.watch(hostsProvider.select((s) => s.httpById(host.id)?.connectionKey));
+      if (key == null) return null;
+      final config = ref.read(hostsProvider).httpById(host.id)!;
+      final link = ref.read(sshLinkFactoryProvider)(ref, config);
       ref.onDispose(() => unawaited(link.close()));
       return link;
     case HostKind.relay:
@@ -242,6 +262,7 @@ final hostNameProvider = Provider.autoDispose.family<String?, HostRef>((ref, hos
   return switch (host.kind) {
     HostKind.local => appL10n.commonThisPhone,
     HostKind.ssh => ref.watch(hostsProvider.select((s) => s.sshById(host.id)?.name)),
+    HostKind.http => ref.watch(hostsProvider.select((s) => s.httpById(host.id)?.name)),
     HostKind.relay => ref.watch(relayAccountProvider.select((a) => a.value?.hostById(host.id)?.name)) ?? host.name,
   };
 });
@@ -537,6 +558,12 @@ AsyncValue<HostConnection?> _connectionForHost(Ref ref, HostRef host) {
       return ref.watch(localConnectionProvider);
     case HostKind.ssh:
       final known = ref.watch(hostsProvider.select((s) => !s.loaded || s.sshById(host.id) != null));
+      if (!known) return ref.watch(localConnectionProvider);
+      final loaded = ref.watch(hostsProvider.select((s) => s.loaded));
+      if (!loaded) return const AsyncLoading();
+      return ref.watch(remoteConnectionProvider(host));
+    case HostKind.http:
+      final known = ref.watch(hostsProvider.select((s) => !s.loaded || s.httpById(host.id) != null));
       if (!known) return ref.watch(localConnectionProvider);
       final loaded = ref.watch(hostsProvider.select((s) => s.loaded));
       if (!loaded) return const AsyncLoading();
