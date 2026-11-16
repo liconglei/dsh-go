@@ -120,6 +120,9 @@ class DsBotHttpTransport implements DsBotTransport {
             return;
           }
           _applyHost(req.headers);
+          if (connection.authorization case final auth?) {
+            req.headers.set(HttpHeaders.authorizationHeader, auth);
+          }
           if (connection.cookie case final cookie?) req.headers.set(HttpHeaders.cookieHeader, cookie.header);
           req.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
           req.followRedirects = false;

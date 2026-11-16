@@ -49,6 +49,7 @@ final class BackgroundListRequest {
     required this.requestTimeout,
     this.hostHeader,
     this.cookieHeader,
+    this.authorizationHeader,
     this.credentialRefs = const [],
   });
 
@@ -58,6 +59,7 @@ final class BackgroundListRequest {
   final String rpcId;
   final String? hostHeader;
   final String? cookieHeader;
+  final String? authorizationHeader;
   final Duration connectTimeout;
   final Duration requestTimeout;
 }
@@ -401,6 +403,7 @@ Future<void> _sessionReadWorker(_WorkerInput input) async {
       req.headers.port = parsed.hasPort ? parsed.port : 80;
     }
     if (request.cookieHeader case final cookie?) req.headers.set(HttpHeaders.cookieHeader, cookie);
+    if (request.authorizationHeader case final auth?) req.headers.set(HttpHeaders.authorizationHeader, auth);
     req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
     final body = utf8.encode(
       jsonEncode({

@@ -212,6 +212,7 @@ final class _RunWatch {
       request.persistentConnection = false;
       request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
       if (connection.hostHeader != null) request.headers.set(HttpHeaders.hostHeader, connection.hostHeader!);
+      if (connection.authorization case final auth?) request.headers.set(HttpHeaders.authorizationHeader, auth);
       if (connection.cookie != null) request.headers.set(HttpHeaders.cookieHeader, connection.cookie!.header);
       final response = await request.close();
       if (!current()) return;

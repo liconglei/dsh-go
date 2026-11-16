@@ -152,6 +152,7 @@ class DshConnection {
     Uri baseUri, {
     this.hostHeader,
     this.cookie,
+    this.authorization,
     HttpClient? httpClient,
     this.connectTimeout = const Duration(seconds: 10),
     this.requestTimeout = const Duration(seconds: 120),
@@ -174,6 +175,12 @@ class DshConnection {
 
   /// Overrides the `Host` header (`host:port`); defaults to [baseUri]'s authority.
   final String? hostHeader;
+
+  /// Full `Authorization` header value sent on every request, including the
+  /// WebSocket upgrade, SSE feeds and background isolate reads. Null for the
+  /// cookie-based hosts; kept as a header value so the transport stays
+  /// scheme-agnostic (Basic, Bearer, ...).
+  final String? authorization;
   final Duration connectTimeout;
   final Duration requestTimeout;
   DshTracer? _tracer;
@@ -212,6 +219,7 @@ class DshConnection {
         requestTimeout: requestTimeout,
         hostHeader: hostHeader,
         cookieHeader: cookie?.header,
+        authorizationHeader: authorization,
         credentialRefs: List.unmodifiable(credentialRefs),
       ),
     );
@@ -407,6 +415,7 @@ class DshConnection {
       req.followRedirects = false;
       req.persistentConnection = false;
       _applyHost(req.headers);
+      _applyAuth(req.headers);
       if (cookie != null) req.headers.set(HttpHeaders.cookieHeader, cookie!.header);
       final response = await req.close();
       if (response.statusCode >= 300 && response.statusCode < 400) {
@@ -449,7 +458,11 @@ class DshConnection {
   /// A missing/expired cookie fails the upgrade with HTTP 401 and a fence
   /// failure with 403; both surface as [DshHttpException].
   Future<WebSocket> connectWebSocket(String path, {Duration? timeout}) async {
-    final headers = <String, Object>{if (cookie != null) 'Cookie': cookie!.header, 'Host': ?hostHeader};
+    final headers = <String, Object>{
+      if (cookie != null) 'Cookie': cookie!.header,
+      if (authorization != null) 'Authorization': authorization!,
+      'Host': ?hostHeader,
+    };
     final uri = webSocketUri(path);
     var abandoned = false;
     try {
@@ -525,6 +538,7 @@ class DshConnection {
       }
       req.followRedirects = followRedirects;
       _applyHost(req.headers);
+      _applyAuth(req.headers);
       if (cookie != null) req.headers.set(HttpHeaders.cookieHeader, cookie!.header);
       if (contentType != null) req.headers.set(HttpHeaders.contentTypeHeader, contentType);
       headers?.forEach(req.headers.set);
@@ -570,6 +584,12 @@ class DshConnection {
       throw DshTransportException('$method ${uri.path} failed: ${error.message}', error);
     } on HandshakeException catch (error) {
       throw DshTransportException('TLS handshake failed: ${error.message}', error);
+    }
+  }
+
+  void _applyAuth(HttpHeaders headers) {
+    if (authorization case final value?) {
+      headers.set(HttpHeaders.authorizationHeader, value);
     }
   }
 
