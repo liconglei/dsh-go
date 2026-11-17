@@ -65,19 +65,20 @@ class WindowsWebViewController extends PlatformWebViewController {
   bool _canGoBack = false;
   bool _canGoForward = false;
 
-  /// Credentials the app offered through `onHttpAuthRequest`.
-  ///
-  /// webview_flutter_windows has no BasicAuthenticationRequested hook, so a
-  /// WebView2 401 used to end as `validAuthenticationCredentialsRequired`.
-  /// Replay the app's answer as URL user info on the navigation itself.
-  WebViewCredential? _basicCredential;
-  String? _basicCredentialHost;
-
-  Future<void> get _ready => _initializing ??= _native.initialize();
+  Future<void> get _ready => _initializing ??= _native.initialize().catchError((Object e) {
+    // A failed first init must not poison the controller forever: clear the
+    // cached future so a later call can try again.
+    _initializing = null;
+    throw e;
+  });
 
   /// Called by the widget on first build so initialization always starts,
   /// even if the business code only called no-op setters before loading.
-  void startInitialization() => _ready;
+  void startInitialization() {
+    // Nothing awaits this, so swallow the error here; real callers await _ready
+    // and still see the failure.
+    unawaited(_ready.catchError((_) {}));
+  }
 
   /// Wires native streams into the webview_flutter navigation callbacks.
   /// Called once by [setPlatformNavigationDelegate] after the delegate exists.
@@ -87,8 +88,8 @@ class WindowsWebViewController extends PlatformWebViewController {
     _bound = true;
 
     _native.url.listen((rawUrl) {
-      // Basic credentials are replayed in the URL (see [_withBasicAuth]).
-      // Never hand them back to business code or the "open in browser" button.
+      // Defensive: never surface userinfo to business code or "open in browser"
+      // even if a URL with credentials reaches here.
       final url = _withoutUserInfo(rawUrl);
       _currentUrl = url;
       delegate.onUrlChange?.call(UrlChange(url: url));
@@ -129,17 +130,14 @@ class WindowsWebViewController extends PlatformWebViewController {
 
   bool _bound = false;
 
-  /// Replays the app's HTTP Basic answer on the navigation URL.
-  ///
-  /// Business code supplies credentials through `onHttpAuthRequest`, which
-  /// WebView2 never fires here: the underlying package has no
-  /// BasicAuthenticationRequested hook. A synthetic request asks the same
-  /// callback for its answer before the first load, and Chromium turns the
-  /// URL's user info into the Basic Authorization header. The original URL is
-  /// left untouched everywhere else, including JS `location`.
-  void _askForBasicCredentials(Uri uri) {
+  /// Asks the app's `onHttpAuthRequest` callback for its Basic answer and hands
+  /// it to WebView2 ahead of the navigation. The native fork answers the real
+  /// BasicAuthenticationRequested challenge with it, so the password never
+  /// appears in the URL (where page JS could read it) and the challenge is only
+  /// satisfied for [uri]'s host.
+  Future<void> _askForBasicCredentials(Uri uri) async {
     final callback = _delegate?.onHttpAuthRequest;
-    if (callback == null || uri.userInfo.isNotEmpty) return;
+    if (callback == null) return;
     WebViewCredential? answer;
     try {
       callback(
@@ -154,22 +152,11 @@ class WindowsWebViewController extends PlatformWebViewController {
     }
     if (answer case final credential?) {
       if (credential.user.isNotEmpty || credential.password.isNotEmpty) {
-        _basicCredential = credential;
-        _basicCredentialHost = uri.host;
+        await _native.setBasicAuth(uri.host, credential.user, credential.password);
       } else {
-        _basicCredential = null;
-        _basicCredentialHost = null;
+        await _native.setBasicAuth('', '', '');
       }
     }
-  }
-
-  Uri _withBasicAuth(Uri uri) {
-    final credential = _basicCredential;
-    final host = _basicCredentialHost;
-    if (credential == null || host != uri.host || uri.userInfo.isNotEmpty) return uri;
-    return uri.replace(
-      userInfo: '${Uri.encodeComponent(credential.user)}:${Uri.encodeComponent(credential.password)}',
-    );
   }
 
   static String _withoutUserInfo(String raw) {
@@ -220,11 +207,12 @@ class WindowsWebViewController extends PlatformWebViewController {
 
   @override
   Future<void> loadRequest(LoadRequestParams params) async {
-    _askForBasicCredentials(params.uri);
     await _ready;
+    await _askForBasicCredentials(params.uri);
     // WebView2's loadUrl issues a GET. The app's page loads are all GETs; a
     // POST with a body is not expressible through this API and is ignored.
-    await _native.loadUrl(_withBasicAuth(params.uri).toString());
+    // Credentials are set natively (setBasicAuth), never placed in this URL.
+    await _native.loadUrl(params.uri.toString());
   }
 
   @override

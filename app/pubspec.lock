@@ -1409,10 +1409,9 @@ packages:
   webview_flutter_windows:
     dependency: "direct main"
     description:
-      name: webview_flutter_windows
-      sha256: "8b5d4be64397caf72e55757be342fd11307096edaa96afd8da1eb628bd1c0fb2"
-      url: "https://pub.dev"
-    source: hosted
+      path: "plugin_forks/webview_flutter_windows"
+      relative: true
+    source: path
     version: "1.3.1"
   webview_flutter_wkwebview:
     dependency: transitive

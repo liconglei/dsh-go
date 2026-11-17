@@ -71,6 +71,9 @@ class DesktopNotifyChannel extends NotifyChannel {
     );
     notification.onClick = () => unawaited(() async {
       debugPrint('desktop notify: tapped $id');
+      // A tapped toast is done; don't keep its notification/tap in the map
+      // forever (Windows gives no callback for a toast cleared by the user).
+      _posted.remove(id);
       // The window is hidden in the tray when a toast arrives. Bring it back
       // FIRST, then route the tap: doing both in parallel let the conversation
       // open behind a still-hidden window and looked like nothing happened.
