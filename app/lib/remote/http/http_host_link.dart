@@ -49,8 +49,6 @@ class HttpHostLink implements HostLink {
     _kickSub = kicks?.listen((_) => kick());
   }
 
-  static const _maxMuxRelogins = 3;
-
   final SshHostConfig config;
 
   /// The account's password, read from secure storage on each attempt so a
@@ -69,11 +67,6 @@ class HttpHostLink implements HostLink {
   final _delay = InterruptibleDelay();
   StreamSubscription<void>? _kickSub;
   StreamSubscription<DshConnectionState>? _muxSub;
-  /// Consecutive re-logs forced by a mux `unauthorized` without a working
-  /// session in between. A saved-but-wrong password can still pass a Basic
-  /// proxy (which hands back a stale cookie) and then fail at the mux every
-  /// time; without a cap that would reconnect in a tight loop forever.
-  int _muxRelogins = 0;
   HostLinkStatus _status = HostLinkStatus.idle;
   DshClient? _client;
   Future<DshClient>? _opening;
@@ -191,7 +184,6 @@ class HttpHostLink implements HostLink {
       throw StateError('link closed');
     }
     _client = client;
-    _muxRelogins = 0;
     _watchMux(client);
     if (previous != null) unawaited(previous.close().catchError((_) {}));
     _emit(HostLinkStatus(HostLinkPhase.connected, completed: HostLinkStep.values.toSet()));
@@ -262,23 +254,6 @@ class HttpHostLink implements HostLink {
       _muxSub = null;
       _client = null;
       unawaited(client.close().catchError((_) {}));
-      // If the password is wrong but the Basic proxy still answers (handing
-      // back a stale cookie), every re-login passes the proxy and fails again
-      // at the mux. Cap consecutive re-logs so a bad secret fails clearly
-      // instead of hammering the server in a tight loop.
-      if (++_muxRelogins >= _maxMuxRelogins) {
-        _emit(
-          HostLinkStatus(
-            HostLinkPhase.failed,
-            error: HostLinkError(
-              HostLinkErrorKind.authFailed,
-              appL10n.remoteErrUsernamePassword,
-              retryable: true,
-            ),
-          ),
-        );
-        return;
-      }
       _emit(
         HostLinkStatus(
           HostLinkPhase.reconnecting,
