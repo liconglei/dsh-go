@@ -51,6 +51,9 @@ void main() {
   });
 
   test('mode changes reach the platform once', () async {
+    // This asserts channel traffic, which only happens on a platform that has
+    // the channel; make that explicit instead of depending on the host OS.
+    RefreshRateService.operatingSystem = 'android';
     final calls = <MethodCall>[];
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(RefreshRateService.channel, (call) async {
@@ -96,6 +99,19 @@ void main() {
 
   const cadence = Duration(milliseconds: 8);
   const blink = Duration(milliseconds: 500);
+
+  group('on Windows', () {
+    setUp(() => RefreshRateService.operatingSystem = 'windows');
+
+    test('start and setMode send nothing: the desktop compositor decides', () async {
+      final calls = record();
+      final service = RefreshRateService.instance;
+      service.start();
+      await service.setMode(RefreshRateMode.max);
+      await Future<void>.delayed(Duration.zero);
+      expect(calls, isEmpty);
+    });
+  });
 
   group('on Android', () {
     setUp(() => RefreshRateService.operatingSystem = 'android');

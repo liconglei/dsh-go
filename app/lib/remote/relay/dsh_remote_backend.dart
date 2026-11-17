@@ -40,6 +40,7 @@ class DshRemoteRelayBackend implements RelayBackend, RelayNetworkBackend, RelayP
              deviceName: switch (Platform.operatingSystem) {
                'ohos' => 'DSH App (HarmonyOS)',
                'ios' => 'DSH App (iOS)',
+               'windows' => 'DSH Go (Windows)',
                _ => 'DSH App (Android)',
              },
              platform: 'dsh-app-android',

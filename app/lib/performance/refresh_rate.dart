@@ -75,8 +75,10 @@ class RefreshRateService {
 
   static bool get _motionOnly => operatingSystem == 'ohos';
 
-  /// iOS paces frames itself (ProMotion); nothing to ask for.
-  static bool get _systemDecides => operatingSystem == 'ios';
+  /// iOS paces frames itself (ProMotion) and Windows lets the desktop compositor
+  /// decide; neither has the per-app `dsh/app` refresh-rate channel, so never
+  /// register a frame listener there.
+  static bool get _systemDecides => operatingSystem == 'ios' || operatingSystem == 'windows';
 
   /// Called by the settings row and by the stored preference after launch.
   Future<void> setMode(RefreshRateMode mode) async {

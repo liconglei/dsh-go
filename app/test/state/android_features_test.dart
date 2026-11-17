@@ -125,8 +125,10 @@ class _NotExempt extends FakeBridge {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('everything but ohos and ios counts as Android, so tests run on the Android path', () {
-    final container = ProviderContainer();
+  test('on Android the phone-only features are on, as the tests below assume', () {
+    final container = ProviderContainer(
+      overrides: [operatingSystemProvider.overrideWithValue('android')],
+    );
     addTearDown(container.dispose);
     expect(container.read(androidSystemFeaturesProvider), isTrue);
   });
@@ -176,6 +178,14 @@ void main() {
       expect(find.text(_zh.systemActionsTitle), findsNothing);
     });
 
+    testWidgets('on Windows: neither phone control nor HarmonyOS 系统操作', (tester) async {
+      await _pump(tester, const SettingsScreen(), android: false, os: 'windows');
+      expect(find.byKey(const SpotKey('page:phone')), findsNothing);
+      expect(find.byKey(const SpotKey('page:systemActions')), findsNothing);
+      expect(find.text(_zh.systemActionsTitle), findsNothing);
+      expect(find.byKey(const SpotKey('page:webSearch')), findsOneWidget);
+    });
+
     testWidgets('on HarmonyOS: 系统操作 instead of phone control, every group still there', (tester) async {
       await _pump(tester, const SettingsScreen(), android: false);
       expect(find.byKey(const SpotKey('page:phone')), findsNothing);
@@ -214,6 +224,13 @@ void main() {
       await _pump(tester, const AllFeaturesPage(), android: true);
       expect(find.text('手机操控'), findsOneWidget);
       expect(find.text(_zh.catalogSystemActions), findsNothing);
+    });
+
+    testWidgets('on Windows: 手机操控 and 系统操作 both absent', (tester) async {
+      await _pump(tester, const AllFeaturesPage(), android: false, os: 'windows');
+      expect(find.text('手机操控'), findsNothing);
+      expect(find.text(_zh.catalogSystemActions), findsNothing);
+      expect(find.text(_zh.catalogModels), findsOneWidget);
     });
 
     testWidgets('on HarmonyOS: 系统操作 in its place, the rest of its group stays', (tester) async {
@@ -740,15 +757,17 @@ void main() {
     });
   });
 
-  test("Android's own system features stay off HarmonyOS and iOS", () {
+  test("Android's own system features stay off HarmonyOS, iOS and Windows", () {
     expect(androidSystemFeaturesOn('android'), isTrue);
     expect(androidSystemFeaturesOn('ohos'), isFalse);
     expect(androidSystemFeaturesOn('ios'), isFalse);
+    expect(androidSystemFeaturesOn('windows'), isFalse);
   });
 
-  test('turning those off on iOS leaves its WebRTC path alone', () {
+  test('the direct WebRTC path is on for phones, off where it cannot be used', () {
     expect(webRtcOn('android'), isTrue);
     expect(webRtcOn('ios'), isTrue);
     expect(webRtcOn('ohos'), isFalse);
+    expect(webRtcOn('windows'), isFalse);
   });
 }

@@ -69,8 +69,10 @@ class PerformancePage extends ConsumerWidget {
               ),
           ],
         ),
-        // iOS paces frames itself (RefreshRateService leaves it alone).
-        if (ref.watch(operatingSystemProvider) != 'ios')
+        // iOS paces frames itself and Windows has no per-app refresh-rate
+        // channel (RefreshRateService leaves both alone).
+        if (ref.watch(operatingSystemProvider) != 'ios' &&
+            ref.watch(operatingSystemProvider) != 'windows')
           SettingsSection(
             footer: Text(ohos ? l10n.performanceRefreshHintOhos : l10n.performanceRefreshHint),
             children: [

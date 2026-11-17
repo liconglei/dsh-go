@@ -32,9 +32,16 @@ import 'host_key_dialog.dart' show activateHost;
 typedef PairingScannerBuilder = Widget Function(BuildContext context, ValueChanged<String> onCode);
 
 final pairingScannerProvider = Provider<PairingScannerBuilder>((ref) {
+  final os = ref.watch(operatingSystemProvider);
   // HarmonyOS has no mobile_scanner: the system scan page reads the code there.
-  if (ref.watch(operatingSystemProvider) == 'ohos') {
+  if (os == 'ohos') {
     return (context, onCode) => _SystemScanner(onCode: onCode);
+  }
+  // Windows has no mobile_scanner either. Don't mount a controller that would
+  // throw on a missing plugin; the 粘贴配对链接 button below still completes
+  // pairing, so leave the scan area as an explanatory placeholder.
+  if (os == 'windows') {
+    return (context, onCode) => _CameraUnavailable(message: context.l10n.harmonyPageUnavailable);
   }
   return (context, onCode) => _CameraScanner(onCode: onCode);
 });

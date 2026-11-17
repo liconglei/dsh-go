@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dsh_app/state/android_features.dart';
 import 'package:dsh_app/ui/remote/pairing_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +66,9 @@ void main() {
 
   Widget app() => testApp(
     Scaffold(body: Consumer(builder: (context, ref, _) => ref.watch(pairingScannerProvider)(context, reported.add))),
+    // The camera scanner under test is the phone path; make it explicit rather
+    // than depending on the host OS (Windows now gets an unsupported page).
+    overrides: [operatingSystemProvider.overrideWithValue('android')],
   );
 
   setUp(() {

@@ -418,9 +418,10 @@ final featureSections = <FeatureSection>[
   ], id: settingsFeatureSection),
 ];
 
-/// [featureSections] with HarmonyOS's own page where 手机操控 isn't there
-/// (androidSystemFeaturesProvider).
-final _sectionsWithoutAndroid = <FeatureSection>[
+/// [featureSections] with 手机操控 removed, optionally replaced by [replacement].
+/// HarmonyOS supplies its own 系统操作 page; Windows supplies none (there is no
+/// local engine or phone to act on there), so it just drops the entry.
+List<FeatureSection> _sectionsWithoutPhone(FeatureItem? replacement) => [
   for (final section in featureSections)
     section.items.any((item) => item.id == 'phone')
         ? FeatureSection.localized(
@@ -430,14 +431,7 @@ final _sectionsWithoutAndroid = <FeatureSection>[
                 if (item.id != 'phone')
                   item
                 else
-                  FeatureItem.localized(
-                    id: 'system-actions',
-                    title: (l10n) => l10n.catalogSystemActions,
-                    summary: (l10n) => l10n.catalogSystemActionsSummary,
-                    icon: AppIcons.phoneControl,
-                    tile: FeatureKind.phone,
-                    native: (_) => const SystemActionsPage(),
-                  ),
+                  ?replacement,
             ],
             note: section.note,
             id: section.id,
@@ -445,13 +439,31 @@ final _sectionsWithoutAndroid = <FeatureSection>[
         : section,
 ];
 
+final _systemActionsItem = FeatureItem.localized(
+  id: 'system-actions',
+  title: (l10n) => l10n.catalogSystemActions,
+  summary: (l10n) => l10n.catalogSystemActionsSummary,
+  icon: AppIcons.phoneControl,
+  tile: FeatureKind.phone,
+  native: (_) => const SystemActionsPage(),
+);
+
+/// HarmonyOS's catalogue: 系统操作 stands in for 手机操控.
+final _sectionsWithoutAndroid = _sectionsWithoutPhone(_systemActionsItem);
+
+/// Windows: no phone and no local engine, so no stand-in either.
+final _sectionsForWindows = _sectionsWithoutPhone(null);
+
 /// The section the host's plugin panels join.
 String get pluginFeatureSection => appL10n.catalogPlugins;
 
 /// 全部功能's sections, with an entry per plugin panel the host has (`main`)
 /// at the end of 插件. Exactly [featureSections] without one (on Android).
 final featureSectionsProvider = Provider.autoDispose<List<FeatureSection>>((ref) {
-  final sections = ref.watch(androidSystemFeaturesProvider) ? featureSections : _sectionsWithoutAndroid;
+  final sections = switch (ref.watch(operatingSystemProvider)) {
+    'windows' => _sectionsForWindows,
+    _ => ref.watch(androidSystemFeaturesProvider) ? featureSections : _sectionsWithoutAndroid,
+  };
   final plan = ref.watch(seatPlanProvider(const SeatRequest(slot: Slots.main, placement: SeatPlacement.page)));
   final items = plan.visible;
   if (items.isEmpty) return sections;

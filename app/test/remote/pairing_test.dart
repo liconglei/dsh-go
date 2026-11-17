@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dsh_app/remote/relay/relay_backend.dart';
 import 'package:dsh_app/state/account_state.dart';
+import 'package:dsh_app/state/android_features.dart';
 import 'package:dsh_app/state/hosts_state.dart';
 import 'package:dsh_app/state/remote_pairing_state.dart';
 import 'package:dsh_app/ui/remote/pairing_page.dart';
@@ -77,6 +78,22 @@ const _signedIn = AccountState(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('on Windows the scanner area is a placeholder, not a camera', (tester) async {
+    await tester.pumpWidget(
+      testApp(
+        Scaffold(
+          body: Consumer(
+            builder: (context, ref, _) => ref.watch(pairingScannerProvider)(context, (_) {}),
+          ),
+        ),
+        overrides: [operatingSystemProvider.overrideWithValue('windows')],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('这个版本没有这个页面'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   group('flow', () {
     late _Backend backend;

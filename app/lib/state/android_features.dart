@@ -23,7 +23,7 @@ final androidSystemFeaturesProvider = Provider<bool>(
   (ref) => androidSystemFeaturesOn(ref.watch(operatingSystemProvider)),
 );
 
-/// Whether flutter_webrtc has an implementation here, for DSH Remote's direct path.
+/// Whether DSH Remote may try its direct (P2P/TURN) path here.
 final webRtcAvailableProvider = Provider<bool>((ref) => webRtcOn(ref.watch(operatingSystemProvider)));
 
 /// Windows is a remote-only desktop client: it has no phone control, pet
@@ -31,4 +31,6 @@ final webRtcAvailableProvider = Provider<bool>((ref) => webRtcOn(ref.watch(opera
 /// so it hides the same set iOS does.
 bool androidSystemFeaturesOn(String os) => os != 'ohos' && os != 'ios' && os != 'windows';
 
-bool webRtcOn(String os) => os != 'ohos';
+/// The Windows client is remote-only: reach the server through the relay, not
+/// a peer connection. HarmonyOS has no flutter_webrtc implementation at all.
+bool webRtcOn(String os) => os != 'ohos' && os != 'windows';

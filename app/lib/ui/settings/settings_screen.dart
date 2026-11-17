@@ -180,7 +180,7 @@ class SettingsScreen extends ConsumerWidget {
                 value: text(phoneValue, color: phoneValue == l10n.hubValueOneStep ? colors.warning : null),
                 onTap: () => _push(context, const PhoneControlScreen()),
               )
-            else
+            else if (ref.watch(operatingSystemProvider) != 'windows')
               SettingsTile(
                 icon: AppIcons.phoneControl,
                 tint: SettingsHues.abilities,

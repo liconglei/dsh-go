@@ -17,6 +17,7 @@
 // ignore_for_file: depend_on_referenced_packages
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
@@ -289,13 +290,14 @@ class WindowsWebViewController extends PlatformWebViewController {
   Future<Object> runJavaScriptReturningResult(String javaScript) async {
     await _ready;
     final value = await _native.executeScript(javaScript);
-    // webview_flutter returns a JSON-encoded value. Business code expects
-    // either a String it can jsonDecode or a num; pass primitives through,
-    // encode everything else as JSON text.
+    // Match webview_flutter's platform contract: numbers and booleans pass
+    // through, everything else is JSON-encoded text. The Windows plugin has
+    // already jsonDecode'd the channel reply, so re-encode strings here (they
+    // must come back quoted, as on Android) and use jsonEncode for collections
+    // instead of Dart's toString (which is not JSON).
     if (value == null) return 'null';
     if (value is num || value is bool) return value;
-    if (value is String) return value;
-    return value.toString();
+    return jsonEncode(value);
   }
 
   final Map<String, JavaScriptChannelParams> _channels = {};
@@ -305,8 +307,13 @@ class WindowsWebViewController extends PlatformWebViewController {
     _channels[params.name] = params;
     await _ready;
     _ensureChannelBridge();
-    // Register the channel shim for already-loaded documents too.
-    await _native.executeScript(_channelDefinition(params.name));
+    final definition = _channelDefinition(params.name);
+    // Register for every future document too: a channel added after the first
+    // load (e.g. the companion stage) would otherwise vanish on the next
+    // navigation. The definition is idempotent (`if (!window[n])`).
+    await _native.addScriptToExecuteOnDocumentCreated(definition);
+    // And define it in the already-loaded document.
+    await _native.executeScript(definition);
   }
 
   @override
@@ -316,10 +323,9 @@ class WindowsWebViewController extends PlatformWebViewController {
 
   bool _bridgeInstalled = false;
 
-  /// Injects `window.<name>.postMessage(...)` shims that forward into
-  /// WebView2's `window.chrome.webview.postMessage`, then routes messages back
-  /// to the matching JavaScriptChannelParams. Covers all channels at once so a
-  /// new channel added later still works without re-injecting old ones.
+  /// Routes messages from WebView2's `window.chrome.webview.postMessage` back
+  /// to the matching JavaScriptChannelParams. The per-channel `window.<name>` shim
+  /// is registered separately by [addJavaScriptChannel] for each new document.
   Future<void> _ensureChannelBridge() async {
     if (_bridgeInstalled) return;
     _bridgeInstalled = true;
@@ -333,9 +339,6 @@ class WindowsWebViewController extends PlatformWebViewController {
       final body = message['message'];
       channel.onMessageReceived(JavaScriptMessage(message: body?.toString() ?? ''));
     });
-
-    final definitions = [for (final name in _channels.keys) _channelDefinition(name)].join('\n');
-    await _native.addScriptToExecuteOnDocumentCreated(definitions);
   }
 
   static String _channelDefinition(String name) => '''
