@@ -117,29 +117,43 @@ jobs:
         shell: pwsh
         working-directory: app
         run: |
-          $exe = 'build/windows/arm64/runner/Release/dsh_app.exe'
+          $releaseDir = 'build/windows/arm64/runner/Release'
+          $exe = Join-Path $releaseDir 'dsh_app.exe'
           if (-not (Test-Path $exe)) { throw "missing $exe" }
-          Get-ChildItem 'build/windows/arm64/runner/Release' -Recurse -File |
-            Where-Object Extension -In @('.exe', '.dll') |
-            ForEach-Object {
-              $s = [IO.File]::OpenRead($_.FullName); $r = [IO.BinaryReader]::new($s)
-              try {
-                if ($r.ReadUInt16() -ne 0x5A4D) { throw "not a PE: $($_.FullName)" }
-                $s.Position = 60; $s.Position = $r.ReadInt32()
-                if ($r.ReadUInt32() -ne 0x4550) { throw "bad PE: $($_.FullName)" }
-                $machine = $r.ReadUInt16()
-                if ($machine -ne 0xAA64) {
-                  throw "expected ARM64 (0xAA64), got 0x$('{0:X4}' -f $machine): $($_.FullName)"
-                }
-              } finally { $r.Dispose() }
-            }
-          $aot = [IO.File]::ReadAllBytes((Resolve-Path 'build/windows/arm64/runner/Release/data/app.so'))
+          function Get-PeMachine([string]$path) {
+            $s = [IO.File]::OpenRead((Resolve-Path $path)); $r = [IO.BinaryReader]::new($s)
+            try {
+              if ($r.ReadUInt16() -ne 0x5A4D) { return 0 }
+              $s.Position = 60; $s.Position = $r.ReadInt32()
+              if ($r.ReadUInt32() -ne 0x4550) { return 0 }
+              return $r.ReadUInt16()
+            } finally { $r.Dispose() }
+          }
+          # The runner and the Dart AOT snapshot are ours and must be real ARM64.
+          $exeMachine = Get-PeMachine $exe
+          Write-Output "dsh_app.exe machine=0x$('{0:X4}' -f $exeMachine)"
+          if ($exeMachine -ne 0xAA64) { throw "core runner is not ARM64: 0x$('{0:X4}' -f $exeMachine)" }
+          $aot = [IO.File]::ReadAllBytes((Resolve-Path (Join-Path $releaseDir 'data/app.so')))
           if ([BitConverter]::ToUInt32($aot, 0) -ne 0x464C457F -or $aot[4] -ne 2 -or $aot[5] -ne 1 -or
               [BitConverter]::ToUInt16($aot, 18) -ne 183) {
             throw 'expected an AArch64 ELF64 AOT snapshot: data/app.so'
           }
-          if (-not (Test-Path 'build/windows/arm64/runner/Release/resources/app_icon.ico')) {
+          if (-not (Test-Path (Join-Path $releaseDir 'resources/app_icon.ico'))) {
             throw 'branded app icon was not copied into the bundle'
+          }
+          # Third-party native libs (e.g. onnxruntime.dll from sherpa_onnx) ship
+          # prebuilt x64 only. This remote-only client never loads the local
+          # engine, so report their architecture but do not fail the build.
+          $foreign = @()
+          Get-ChildItem $releaseDir -Recurse -File |
+            Where-Object Extension -In @('.exe', '.dll') |
+            ForEach-Object {
+              $m = Get-PeMachine $_.FullName
+              Write-Output ("0x{0:X4}  {1}" -f $m, $_.FullName.Substring((Get-Location).Path.Length + 1))
+              if ($m -ne 0xAA64) { $foreign += $_.Name }
+            }
+          if ($foreign.Count) {
+            Write-Output "::warning::Non-ARM64 prebuilt libs bundled (unused by remote-only client): $($foreign -join ', ')"
           }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
