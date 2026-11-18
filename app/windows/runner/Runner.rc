@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "io.github.ccch1mneyyy" "\0"
-            VALUE "FileDescription", "dsh_app" "\0"
+            VALUE "FileDescription", "DSH Go" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "dsh_app" "\0"
+            VALUE "InternalName", "DSH Go" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 io.github.ccch1mneyyy. All rights reserved." "\0"
-            VALUE "OriginalFilename", "dsh_app.exe" "\0"
-            VALUE "ProductName", "dsh_app" "\0"
+            VALUE "OriginalFilename", "DSH Go.exe" "\0"
+            VALUE "ProductName", "DSH Go" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

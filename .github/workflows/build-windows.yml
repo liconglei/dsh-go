@@ -66,6 +66,18 @@ jobs:
           if (-not (Test-Path 'build/windows/x64/runner/Release/resources/app_icon.ico')) {
             throw 'branded app icon was not copied into the bundle'
           }
+      # Flutter's tooling looks for <pubspec-name>.exe, so the CMake target
+      # stays dsh_app. Rename only the shipped artifact to the public name.
+      - name: Name the x64 executable
+        shell: pwsh
+        working-directory: app
+        run: |
+          $dir = 'build/windows/x64/runner/Release'
+          Move-Item -LiteralPath "$dir/dsh_app.exe" -Destination "$dir/DSH Go.exe" -Force
+          if (-not (Test-Path -LiteralPath "$dir/DSH Go.exe")) {
+            throw 'renamed executable is missing'
+          }
+          Get-ChildItem -LiteralPath $dir -Filter '*.exe' | Select-Object -ExpandProperty Name
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dsh-windows-x64
@@ -155,6 +167,17 @@ jobs:
           if ($foreign.Count) {
             Write-Output "::warning::Non-ARM64 prebuilt libs bundled (unused by remote-only client): $($foreign -join ', ')"
           }
+      # Keep the build target as dsh_app for Flutter; ship it under the public name.
+      - name: Name the ARM64 executable
+        shell: pwsh
+        working-directory: app
+        run: |
+          $dir = 'build/windows/arm64/runner/Release'
+          Move-Item -LiteralPath "$dir/dsh_app.exe" -Destination "$dir/DSH Go.exe" -Force
+          if (-not (Test-Path -LiteralPath "$dir/DSH Go.exe")) {
+            throw 'renamed executable is missing'
+          }
+          Get-ChildItem -LiteralPath $dir -Filter '*.exe' | Select-Object -ExpandProperty Name
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dsh-windows-arm64
