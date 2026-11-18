@@ -48,9 +48,16 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
     if (_shown == UiMode.native && mode.mode == UiMode.web) {
       // Switched from the native interface: its conversation (or its new
       // chat) opens in the page. A cold start in web mode lands where the
-      // page itself left off.
+      // page itself left off. When the page already remembers that same
+      // conversation, let it restore by itself: handing it over would write
+      // the selection and reload the whole page (one extra load).
       final id = ref.read(currentSessionProvider);
-      _handoff = id == null ? const DshWebTarget(newSession: true) : DshWebTarget(sessionId: id);
+      final lastWeb = ref.read(webLastSessionProvider);
+      _handoff = id == null
+          ? const DshWebTarget(newSession: true)
+          : id == lastWeb
+          ? null
+          : DshWebTarget(sessionId: id);
     }
     _shown = mode.mode;
     final Widget home = mode.web

@@ -769,7 +769,17 @@ class _WebViewPageState extends State<WebViewPage> {
     // After the navigation delegate: the guard wraps the client it set.
     await _guard.attach(controller, dark: _dark, textZoom: _textZoom);
     if (!mounted || controller != _controller) return;
-    await controller.loadRequest(widget.url).catchError((_) {});
+    // A saved account goes on the first request too: without it the proxy's
+    // 401 challenge costs a whole extra load (a visible blank flash) before
+    // onHttpAuthRequest can answer it. Only the DSH Web page itself: an
+    // island's URL is not necessarily the host that owns the account, and
+    // its challenges still go through onHttpAuthRequest.
+    final headers = <String, String>{};
+    if (widget.dshWeb && basic != null) {
+      final token = base64Encode(utf8.encode('${basic.user}:${basic.password}'));
+      headers['Authorization'] = 'Basic $token';
+    }
+    await controller.loadRequest(widget.url, headers: headers).catchError((_) {});
   }
 
   void _onRendererGone(bool crashed) {

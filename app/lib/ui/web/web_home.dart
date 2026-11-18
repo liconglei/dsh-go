@@ -54,6 +54,18 @@ import 'web_view_page.dart';
 /// handed over as base64 text).
 const maxWebComposeBytes = 16 * 1024 * 1024;
 
+/// The conversation the web page last reported (or was sent to). It outlives
+/// the page so a switch from the native interface can tell whether the page
+/// already restores the same conversation by itself.
+class WebLastSession extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void remember(String? id) => state = id;
+}
+
+final webLastSessionProvider = NotifierProvider<WebLastSession, String?>(WebLastSession.new);
+
 /// 网页模式's home page.
 class WebHome extends ConsumerStatefulWidget {
   const WebHome({super.key, this.initial});
@@ -94,9 +106,12 @@ class _WebHomeState extends ConsumerState<WebHome> {
   }
 
   void _onSession(String? id) {
-    if (id == _webSession) return;
-    _webSession = id;
-    ref.read(currentSessionProvider.notifier).select(id);
+    if (!mounted) return;
+    if (id != _webSession) {
+      _webSession = id;
+      ref.read(currentSessionProvider.notifier).select(id);
+    }
+    ref.read(webLastSessionProvider.notifier).remember(id);
   }
 
   void _take(WebOpenRequest request) {
