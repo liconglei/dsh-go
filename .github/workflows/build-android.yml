@@ -95,10 +95,40 @@ jobs:
       - name: Write local.properties
         working-directory: app
         run: printf 'sdk.dir=%s\nflutter.sdk=%s\n' "$ANDROID_HOME" "$FLUTTER_ROOT" > android/local.properties
+      # The signed release config is only created when key.properties exists.
+      # Restore it from repository secrets so CI ships the same certificate as
+      # local releases instead of falling back to the debug key.
+      - name: Restore release signing key
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in ANDROID_KEYSTORE_B64 ANDROID_STORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [[ -n ${!v} ]] || { echo "::error::missing secret $v"; exit 1; }
+          done
+          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > app/android/dsh-release.jks
+          printf 'storeFile=../dsh-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" \
+            > app/android/key.properties
+          echo "restored keystore for alias $ANDROID_KEY_ALIAS"
       # build-apk.sh reads the build minute for versionCode and verifies the
       # bundle, tawcroot lib, JNI symbols and versionCode before finishing.
       - name: Build release APK
         run: bash tooling/build-apk.sh --flavor arm64 --release
+      - name: Verify release signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/app/outputs/flutter-apk/app-arm64-release.apk
+          signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          [[ -n $signer ]] || { echo "::error::apksigner not found"; exit 1; }
+          "$signer" verify --print-certs "$apk" | tee app/build/app/outputs/flutter-apk/signer.txt
+          grep -q '01f725b29e343fd2ad0152de293d20fce12fc1b0593e6617348bfb2dd823379e' \
+            app/build/app/outputs/flutter-apk/signer.txt
       - name: Collect and hash the APK
         shell: bash
         run: |
@@ -110,5 +140,6 @@ jobs:
           path: |
             app/build/app/outputs/flutter-apk/app-arm64-release.apk
             app/build/app/outputs/flutter-apk/sha256.txt
+            app/build/app/outputs/flutter-apk/signer.txt
           if-no-files-found: error
           retention-days: 30
