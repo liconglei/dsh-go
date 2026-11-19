@@ -228,7 +228,7 @@ bool Webview::CreateSurface(
   return true;
 }
 
-void Webview::EnableFileChooserInterception() {
+bool Webview::EnableFileChooserInterception() {
   // WebView2 exposes no file-chooser event. CDP's Page.fileChooserOpened
   // carries the backendNodeId we need to hand files back via
   // DOM.setFileInputFiles.
