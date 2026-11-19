@@ -142,6 +142,12 @@ typedef PermissionRequestedDelegate =
       bool isUserInitiated,
     );
 
+/// dsh-go: the platform's file chooser delegate. [mode] is 0 for a single
+/// file and 1 for multiple; [accept] is the element's `accept` attribute split
+/// on commas (empty when the page sets none). Returning null cancels.
+typedef FileSelectorDelegate = Future<List<String>?> Function(
+    int mode, List<String> accept);
+
 /// Identifies a script registered with
 /// [WebviewController.addScriptToExecuteOnDocumentCreated].
 typedef ScriptID = String;
@@ -258,6 +264,9 @@ class WebviewController extends ValueNotifier<WebviewValue> {
   Future<void> get ready => _readyCompleter.future;
 
   PermissionRequestedDelegate? _permissionRequested;
+
+  /// dsh-go: installed by the app when a page may show a file input.
+  FileSelectorDelegate? _fileSelector;
 
   MethodChannel? _methodChannel;
   StreamSubscription<dynamic>? _eventStreamSubscription;
@@ -481,8 +490,52 @@ class WebviewController extends ValueNotifier<WebviewValue> {
     if (call.method == 'permissionRequested') {
       return _onPermissionRequested(call.arguments as Map<dynamic, dynamic>);
     }
+    if (call.method == 'fileChooserRequested') {
+      return _onFileChooserRequested(call.arguments as Map<dynamic, dynamic>);
+    }
 
     throw MissingPluginException('Unknown method ${call.method}');
+  }
+
+  Future<List<String>?> _onFileChooserRequested(
+    Map<dynamic, dynamic> args,
+  ) async {
+    final delegate = _fileSelector;
+    if (delegate == null) return null;
+    final mode = args['mode'] as int? ?? 0;
+    try {
+      return await delegate(mode, _acceptAttribute(args['node']));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// `<input accept>` from the DOM.describeNode reply: a flat
+  /// `["type","file","accept",".png,image/*", …]` pair list. Anything
+  /// unexpected yields no filter rather than a wrong one.
+  static List<String> _acceptAttribute(Object? node) {
+    if (node is! String || node.isEmpty) return const [];
+    try {
+      final description = jsonDecode(node);
+      if (description is! Map) return const [];
+      final element = description['node'];
+      if (element is! Map) return const [];
+      final attributes = element['attributes'];
+      if (attributes is! List) return const [];
+      for (var i = 0; i + 1 < attributes.length; i += 2) {
+        if (attributes[i] != 'accept') continue;
+        final value = attributes[i + 1];
+        if (value is! String) return const [];
+        return value
+            .split(',')
+            .map((token) => token.trim())
+            .where((token) => token.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {
+      // A malformed description only costs the filter.
+    }
+    return const [];
   }
 
   Future<bool?> _onPermissionRequested(Map<dynamic, dynamic> args) async {
@@ -522,6 +575,7 @@ class WebviewController extends ValueNotifier<WebviewValue> {
       return;
     }
     _isDisposed = true;
+    _fileSelector = null;
 
     // Wait for an in-flight initialization to settle so a native instance
     // created concurrently with dispose() cannot be orphaned.
@@ -691,6 +745,14 @@ class WebviewController extends ValueNotifier<WebviewValue> {
       return;
     }
     return _channel.invokeMethod('setBasicAuth', [host, username, password]);
+  }
+
+  /// dsh-go: installs the delegate for `<input type=file>`. Passing null
+  /// disables CDP interception so the browser's own behaviour is restored.
+  Future<void> setOnShowFileSelector(FileSelectorDelegate? delegate) async {
+    if (_isDisposed) return;
+    _fileSelector = delegate;
+    await _channel.invokeMethod('setFileChooserEnabled', delegate != null);
   }
 
   /// Returns the cookies that match [uri], or all cookies of the browser

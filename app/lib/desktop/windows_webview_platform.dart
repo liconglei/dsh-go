@@ -19,6 +19,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+// FileSelectorParams/Mode are Android package types; the platform interface
+// has no file-selector contract. Only the Windows adapter imports them.
+import 'package:webview_flutter_android/webview_flutter_android.dart'
+    show FileSelectorMode, FileSelectorParams;
+
 import 'package:flutter/widgets.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 import 'package:webview_flutter_windows/webview_flutter_windows.dart' as win;
@@ -267,6 +272,27 @@ class WindowsWebViewController extends PlatformWebViewController {
   Future<void> setOnPlatformPermissionRequest(
     void Function(PlatformWebViewPermissionRequest request) onPermissionRequest,
   ) async {}
+
+  /// dsh-go: WebView2 file chooser. Not part of the platform interface, so
+  /// WebFileChooser calls this on the Windows controller via `dynamic`.
+  Future<void> setOnShowFileSelector(
+    Future<List<String>> Function(FileSelectorParams params)? callback,
+  ) async {
+    await _ready;
+    await _native.setOnShowFileSelector(
+      callback == null
+          ? null
+          : (int mode, List<String> accept) => callback(FileSelectorParams(
+                isCaptureEnabled: false,
+                // The page's accept attribute, so the picker can filter the
+                // way Chromium's own dialog would.
+                acceptTypes: accept,
+                mode: mode == 1
+                    ? FileSelectorMode.openMultiple
+                    : FileSelectorMode.open,
+              )),
+    );
+  }
 
   @override
   Future<void> runJavaScript(String javaScript) async {

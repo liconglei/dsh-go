@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dsh_app/ui/web/web_file_chooser.dart';
+import 'package:file_picker/file_picker.dart' show FileType;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -25,7 +26,9 @@ void main() {
   setUp(() {
     calls = [];
     url = _url;
-    chooser = WebFileChooser(channel: _channel);
+    // android path on purpose: the default branch under test is the content://
+    // one, so pin both platform flags instead of following the host OS.
+    chooser = WebFileChooser(channel: _channel, ohos: false, windows: false);
     messenger.setMockMethodCallHandler(_channel, (call) async {
       calls.add(call);
       return call.method == 'pick' ? [_file] : null;
@@ -164,5 +167,112 @@ void main() {
     chooser.invalidate();
     finalUrl.complete(_url);
     expect(await pending, isEmpty);
+  });
+
+  group('Windows', () {
+    // `Uri.file(…, windows: true)` + `chooseWindows`' explicit `windows: true`
+    // round-trip to backslash paths on every host, so the expectations hold on
+    // the Linux CI runner as well as on a Windows dev box.
+    const local = r'C:\Users\test\Pictures\shot.png';
+    const second = r'C:\Users\test\Pictures\second.png';
+    late WebFileChooser windows;
+    late List<Uri> picked;
+    late Completer<List<Uri>>? pending;
+
+    setUp(() {
+      picked = [];
+      pending = null;
+      windows = WebFileChooser(
+        channel: _channel,
+        windows: true,
+        pickFiles: (_) => pending?.future ?? Future.value(picked),
+      );
+    });
+    tearDown(() => windows.dispose());
+
+    Future<List<String>> pick([FileSelectorMode mode = FileSelectorMode.open]) =>
+        windows.chooseWindows(
+          _params(mode: mode),
+          currentUrl: () async => _url,
+        );
+
+    test('absolute local paths reach the page and no dsh/web-files call is made', () async {
+      picked = [Uri.file(local, windows: true)];
+      expect(await pick(), [local]);
+      expect(calls, isEmpty);
+    });
+
+    test('a single-file input keeps the first of a multi-selection', () async {
+      picked = [Uri.file(local, windows: true), Uri.file(second, windows: true)];
+      expect(await pick(), [local]);
+      expect(await pick(FileSelectorMode.openMultiple), [local, second]);
+    });
+
+    test('a late result after navigation is discarded', () async {
+      final selected = Completer<List<Uri>>();
+      pending = selected;
+      final wait = pick();
+      await pumpEventQueue();
+      windows.invalidate();
+      selected.complete([Uri.file(local, windows: true)]);
+      expect(await wait, isEmpty);
+    });
+
+    test('only file URIs reach the page', () async {
+      picked = [Uri.parse('content://media/document/12')];
+      expect(await pick(), isEmpty);
+      picked = [Uri.parse('content://media/document/12'), Uri.file(local, windows: true)];
+      expect(await pick(), [local]);
+    });
+
+    test('the accept attribute decides the dialog filter', () async {
+      // Records compare their fields with ==, and a List field is compared by
+      // identity, so the extension list is asserted on its own.
+      expect(pickerFilter(const []).type, FileType.any);
+      expect(pickerFilter(const []).extensions, isNull);
+
+      final extensions = pickerFilter(const ['.png', '.PDF']);
+      expect(extensions.type, FileType.custom);
+      expect(extensions.extensions, ['png', 'pdf']);
+
+      final mime = pickerFilter(const ['image/png']);
+      expect(mime.type, FileType.custom);
+      expect(mime.extensions, ['png']);
+
+      // A wildcard expands to the extensions a browser would take for it.
+      final video = pickerFilter(const ['video/*']);
+      expect(video.type, FileType.custom);
+      expect(video.extensions, contains('mp4'));
+
+      // Anything we cannot express means no filter: hiding a file the page
+      // would have accepted is worse than showing too many.
+      for (final accept in [
+        const ['*/*'],
+        const ['image/png', 'application/x-whatever'],
+        const ['garbage'],
+      ]) {
+        expect(pickerFilter(accept).type, FileType.any, reason: '$accept');
+        expect(pickerFilter(accept).extensions, isNull, reason: '$accept');
+      }
+    });
+
+    test('the picker is asked with the element accept list', () async {
+      FileSelectorParams? seen;
+      final chooser = WebFileChooser(
+        channel: _channel,
+        windows: true,
+        pickFiles: (params) {
+          seen = params;
+          return Future.value([Uri.file(local, windows: true)]);
+        },
+      );
+      addTearDown(chooser.dispose);
+      await chooser.chooseWindows(
+        _params(accept: const ['image/*'], mode: FileSelectorMode.openMultiple),
+        currentUrl: () async => _url,
+      );
+      expect(seen?.acceptTypes, ['image/*']);
+      expect(seen?.mode, FileSelectorMode.openMultiple);
+    });
   });
 }

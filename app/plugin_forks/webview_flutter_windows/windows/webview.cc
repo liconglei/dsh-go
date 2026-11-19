@@ -2,6 +2,7 @@
 
 #include <wrl.h>
 
+#include <cctype>
 #include <format>
 #include <iostream>
 
@@ -19,6 +20,50 @@ inline void ConvertColor(COREWEBVIEW2_COLOR& webview_color, int32_t color) {
   webview_color.G = (color >> 8) & 0xFF;
   webview_color.R = (color >> 16) & 0xFF;
   webview_color.A = (color >> 24) & 0xFF;
+}
+
+// dsh-go: tiny JSON helpers for CDP's fileChooserOpened payload. The event is
+// {"frameId":"...","mode":"selectSingle|selectMultiple","backendNodeId":N};
+// pulling the two fields we need avoids pulling a JSON dependency into the
+// WebView2 fork.
+std::string JsonStringField(const std::string& json, const std::string& key) {
+  const std::string needle = "\"" + key + "\":\"";
+  const size_t at = json.find(needle);
+  if (at == std::string::npos) return {};
+  const size_t begin = at + needle.size();
+  const size_t end = json.find('"', begin);
+  return end == std::string::npos ? std::string{} : json.substr(begin, end - begin);
+}
+
+std::string JsonNumberField(const std::string& json, const std::string& key) {
+  const std::string needle = "\"" + key + "\":";
+  const size_t at = json.find(needle);
+  if (at == std::string::npos) return {};
+  size_t begin = at + needle.size();
+  while (begin < json.size() && isspace(static_cast<unsigned char>(json[begin]))) {
+    ++begin;
+  }
+  size_t end = begin;
+  while (end < json.size() && isdigit(static_cast<unsigned char>(json[end]))) {
+    ++end;
+  }
+  return json.substr(begin, end - begin);
+}
+
+std::string JsonEscape(const std::string& value) {
+  std::string out;
+  out.reserve(value.size() + 8);
+  for (const char c : value) {
+    switch (c) {
+      case '\\': out += "\\\\"; break;
+      case '"': out += "\\\""; break;
+      case '\n': out += "\\n"; break;
+      case '\r': out += "\\r"; break;
+      case '\t': out += "\\t"; break;
+      default: out += c;
+    }
+  }
+  return out;
 }
 
 // dsh-go: extract the host (no userinfo, no port) from an absolute URI, for
@@ -181,6 +226,115 @@ bool Webview::CreateSurface(
   webview_controller_->put_IsVisible(true);
 
   return true;
+}
+
+void Webview::EnableFileChooserInterception() {
+  // WebView2 exposes no file-chooser event. CDP's Page.fileChooserOpened
+  // carries the backendNodeId we need to hand files back via
+  // DOM.setFileInputFiles.
+  if (FAILED(webview_->CallDevToolsProtocolMethod(L"Page.enable", L"{}", nullptr)) ||
+      FAILED(webview_->CallDevToolsProtocolMethod(L"DOM.enable", L"{}", nullptr)) ||
+      FAILED(webview_->GetDevToolsProtocolEventReceiver(
+          L"Page.fileChooserOpened", &file_chooser_receiver_))) {
+    return false;
+  }
+  file_chooser_receiver_->add_DevToolsProtocolEventReceived(
+      Callback<ICoreWebView2DevToolsProtocolEventReceivedEventHandler>(
+          [this](ICoreWebView2* sender,
+                 ICoreWebView2DevToolsProtocolEventReceivedEventArgs* args)
+              -> HRESULT {
+            if (!file_chooser_requested_callback_) return S_OK;
+            wil::unique_cotaskmem_string json_args;
+            if (args->get_ParameterObjectAsJson(&json_args) != S_OK) return S_OK;
+            const std::string json = util::Utf8FromUtf16(json_args.get());
+            const std::string mode = JsonStringField(json, "mode");
+            const std::string node = JsonNumberField(json, "backendNodeId");
+            if (node.empty()) return S_OK;
+            DescribeFileChooserNode(mode == "selectMultiple" ? 1 : 0, node);
+            return S_OK;
+          })
+          .Get(),
+      &event_registrations_.file_chooser_opened_token_);
+  return true;
+}
+
+void Webview::DescribeFileChooserNode(int mode,
+                                      const std::string& backend_node_id) {
+  const auto notify = [this, mode, backend_node_id](std::string node_json) {
+    if (file_chooser_requested_callback_) {
+      file_chooser_requested_callback_(mode, backend_node_id, node_json);
+    }
+  };
+  if (backend_node_id.empty()) {
+    notify({});
+    return;
+  }
+  // The <input>'s attributes carry the accept list. The reply is forwarded
+  // verbatim and parsed in Dart: a description that never arrives only costs
+  // the picker's file-type filter, never the chooser itself.
+  const std::string args =
+      "{\"backendNodeId\":" + backend_node_id + ",\"depth\":0}";
+  const HRESULT hr = webview_->CallDevToolsProtocolMethod(
+      L"DOM.describeNode", util::Utf16FromUtf8(args).c_str(),
+      Callback<ICoreWebView2CallDevToolsProtocolMethodCompletedHandler>(
+          [notify](HRESULT error_code, LPCWSTR json) -> HRESULT {
+            notify(SUCCEEDED(error_code) && json != nullptr
+                       ? util::Utf8FromUtf16(json)
+                       : std::string{});
+            return S_OK;
+          })
+          .Get());
+  if (FAILED(hr)) notify({});
+}
+
+void Webview::SetFileChooserInterceptionEnabled(bool enabled) {
+  if (!webview_) return;
+  if (enabled) {
+    if (!file_chooser_interception_enabled_) {
+      // Only suppress WebView2's own dialog once the CDP event that hands the
+      // files back is live; otherwise the click would land on nothing.
+      if (!EnableFileChooserInterception()) return;
+      file_chooser_interception_enabled_ = true;
+    }
+    webview_->CallDevToolsProtocolMethod(
+        L"Page.setInterceptFileChooserDialog", L"{\"enabled\":true}", nullptr);
+    return;
+  }
+  webview_->CallDevToolsProtocolMethod(
+      L"Page.setInterceptFileChooserDialog", L"{\"enabled\":false}", nullptr);
+}
+
+void Webview::SetFileInputFiles(const std::string& backend_node_id,
+                                const std::vector<std::string>& paths) {
+  if (!webview_ || backend_node_id.empty()) return;
+  std::string files = "[";
+  for (size_t i = 0; i < paths.size(); ++i) {
+    if (i) files += ",";
+    files += "\"" + JsonEscape(paths[i]) + "\"";
+  }
+  files += "]";
+  const std::string args = "{\"files\":" + files + ",\"backendNodeId\":" +
+                           backend_node_id + "}";
+  webview_->CallDevToolsProtocolMethod(
+      L"DOM.setFileInputFiles", util::Utf16FromUtf8(args).c_str(), nullptr);
+}
+
+void Webview::CancelFileChooser(const std::string& backend_node_id) {
+  if (!webview_) return;
+  const auto fallback = [this, backend_node_id]() {
+    // Older runtimes predate Page.handleFileChooser; clearing the input is the
+    // closest thing they have to a dismissal and keeps the page usable.
+    SetFileInputFiles(backend_node_id, {});
+  };
+  const HRESULT hr = webview_->CallDevToolsProtocolMethod(
+      L"Page.handleFileChooser", L"{\"action\":\"cancel\"}",
+      Callback<ICoreWebView2CallDevToolsProtocolMethodCompletedHandler>(
+          [fallback](HRESULT error_code, LPCWSTR) -> HRESULT {
+            if (FAILED(error_code)) fallback();
+            return S_OK;
+          })
+          .Get());
+  if (FAILED(hr)) fallback();
 }
 
 void Webview::EnableSecurityUpdates() {

@@ -121,6 +121,7 @@ struct EventRegistrations {
   EventRegistrationToken web_message_received_token_{};
   EventRegistrationToken permission_requested_token_{};
   EventRegistrationToken devtools_protocol_event_token_{};
+  EventRegistrationToken file_chooser_opened_token_{};
   EventRegistrationToken new_windows_requested_token_{};
   EventRegistrationToken contains_fullscreen_element_changed_token_{};
   EventRegistrationToken download_starting_token_{};
@@ -158,6 +159,13 @@ class Webview {
   typedef std::function<void(WebviewDownloadEvent)> DownloadEventCallback;
   typedef std::function<void(bool success, std::vector<WebviewCookie> cookies)>
       GetCookiesCallback;
+  // dsh-go: WebView2 has no file-chooser event; CDP Page.fileChooserOpened is
+  // intercepted instead. mode: 0 = single, 1 = multiple. |node_json| is the
+  // DOM.describeNode reply (empty when it could not be read), so the Dart side
+  // can honour the element's accept attribute.
+  typedef std::function<void(int mode, const std::string& backend_node_id,
+                             const std::string& node_json)>
+      FileChooserRequestedCallback;
 
   // dsh-go: HTTP Basic credentials supplied ahead of a navigation. Filled at
   // BasicAuthenticationRequested time; never placed in the URL.
@@ -231,6 +239,14 @@ class Webview {
   void SetBasicAuth(const std::string& host, const std::string& username,
                     const std::string& password);
 
+  // dsh-go: file chooser interception via CDP.
+  void SetFileChooserInterceptionEnabled(bool enabled);
+  void SetFileInputFiles(const std::string& backend_node_id,
+                         const std::vector<std::string>& paths);
+  // Dismisses an intercepted chooser so the page sees a cancel instead of a
+  // file input that never answers.
+  void CancelFileChooser(const std::string& backend_node_id);
+
   bool SetVirtualHostNameMapping(const std::string& hostName,
                                  const std::string& path,
                                  WebviewHostResourceAccessKind accessKind);
@@ -282,6 +298,10 @@ class Webview {
     permission_requested_callback_ = std::move(callback);
   }
 
+  void OnFileChooserRequested(FileChooserRequestedCallback callback) {
+    file_chooser_requested_callback_ = std::move(callback);
+  }
+
   void OnDevtoolsProtocolEvent(DevtoolsProtocolEventCallback callback) {
     devtools_protocol_event_callback_ = std::move(callback);
   }
@@ -305,6 +325,9 @@ class Webview {
   wil::com_ptr<ICoreWebView2> webview_;
   wil::com_ptr<ICoreWebView2DevToolsProtocolEventReceiver>
       devtools_protocol_event_receiver_;
+  wil::com_ptr<ICoreWebView2DevToolsProtocolEventReceiver>
+      file_chooser_receiver_;
+  bool file_chooser_interception_enabled_ = false;
   wil::com_ptr<ICoreWebView2Settings> settings_;
   wil::com_ptr<ICoreWebView2Settings2> settings2_;
   POINT last_cursor_pos_ = {0, 0};
@@ -331,6 +354,7 @@ class Webview {
   FocusChangedCallback focus_changed_callback_;
   WebMessageReceivedCallback web_message_received_callback_;
   PermissionRequestedCallback permission_requested_callback_;
+  FileChooserRequestedCallback file_chooser_requested_callback_;
   DevtoolsProtocolEventCallback devtools_protocol_event_callback_;
   ContainsFullScreenElementChangedCallback
       contains_fullscreen_element_changed_callback_;
@@ -345,5 +369,11 @@ class Webview {
       HWND hwnd, bool offscreen_only);
   void RegisterEventHandlers();
   void EnableSecurityUpdates();
+  // Returns false when CDP refuses the setup, which must leave WebView2's own
+  // dialog in place instead of intercepting clicks the app cannot answer.
+  bool EnableFileChooserInterception();
+  // Reads the element behind an intercepted chooser and hands it to the
+  // callback; the description is optional (see FileChooserRequestedCallback).
+  void DescribeFileChooserNode(int mode, const std::string& backend_node_id);
   void SendScroll(double offset, bool horizontal);
 };

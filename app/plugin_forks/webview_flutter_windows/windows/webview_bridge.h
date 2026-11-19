@@ -56,4 +56,9 @@ class WebviewBridge {
       const std::string& url, WebviewPermissionKind permissionKind,
       bool is_user_initiated,
       Webview::WebviewPermissionRequestedCompleter completer);
+
+  // dsh-go: CDP file chooser -> Dart picks files -> DOM.setFileInputFiles.
+  // |node_json| is the DOM.describeNode reply, or empty when unreadable.
+  void OnFileChooserRequested(int mode, const std::string& backend_node_id,
+                              const std::string& node_json);
 };

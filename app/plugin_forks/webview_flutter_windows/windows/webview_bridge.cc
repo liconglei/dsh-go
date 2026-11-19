@@ -113,6 +113,7 @@ constexpr auto kMethodSetPointerButton = "setPointerButton";
 constexpr auto kMethodSetScrollDelta = "setScrollDelta";
 constexpr auto kMethodSetUserAgent = "setUserAgent";
 constexpr auto kMethodSetBasicAuth = "setBasicAuth";
+constexpr auto kMethodSetFileChooserEnabled = "setFileChooserEnabled";
 constexpr auto kMethodSetBackgroundColor = "setBackgroundColor";
 constexpr auto kMethodSetZoomFactor = "setZoomFactor";
 constexpr auto kMethodSetZoomControlEnabled = "setZoomControlEnabled";
@@ -374,6 +375,12 @@ void WebviewBridge::RegisterEventHandlers() {
         OnPermissionRequested(url, kind, is_user_initiated, completer);
       });
 
+  webview_->OnFileChooserRequested(
+      [this](int mode, const std::string& backend_node_id,
+             const std::string& node_json) {
+        OnFileChooserRequested(mode, backend_node_id, node_json);
+      });
+
   webview_->OnContainsFullScreenElementChanged(
       [this](bool contains_fullscreen_element) {
         const auto event = flutter::EncodableValue(flutter::EncodableMap{
@@ -420,6 +427,46 @@ void WebviewBridge::OnPermissionRequested(
             completer(WebviewPermissionState::Default);
           },
           [completer]() { completer(WebviewPermissionState::Default); }));
+}
+
+void WebviewBridge::OnFileChooserRequested(int mode,
+                                           const std::string& backend_node_id,
+                                           const std::string& node_json) {
+  auto args = std::make_unique<flutter::EncodableValue>(flutter::EncodableMap{
+      {"mode", mode},
+      {"backendNodeId", backend_node_id},
+      // DOM.describeNode's reply: Dart reads <input accept> out of it.
+      {"node", node_json}});
+
+  // backend_node_id is borrowed from the CDP callback; capture by value for
+  // the async round trip to Dart.
+  method_channel_->InvokeMethod(
+      "fileChooserRequested", std::move(args),
+      std::make_unique<flutter::MethodResultFunctions<flutter::EncodableValue>>(
+          [this, backend_node_id](const flutter::EncodableValue* result) {
+            std::vector<std::string> paths;
+            if (auto list = std::get_if<flutter::EncodableList>(result)) {
+              for (const auto& item : *list) {
+                if (auto path = std::get_if<std::string>(&item)) {
+                  paths.push_back(*path);
+                }
+              }
+            }
+            // No paths means the person backed out; tell the page rather than
+            // leaving the chooser open.
+            if (paths.empty()) {
+              webview_->CancelFileChooser(backend_node_id);
+              return;
+            }
+            webview_->SetFileInputFiles(backend_node_id, paths);
+          },
+          [this, backend_node_id](const std::string&, const std::string&,
+                                  const flutter::EncodableValue*) {
+            webview_->CancelFileChooser(backend_node_id);
+          },
+          [this, backend_node_id]() {
+            webview_->CancelFileChooser(backend_node_id);
+          }));
 }
 
 void WebviewBridge::HandleMethodCall(
@@ -681,6 +728,15 @@ void WebviewBridge::HandleMethodCall(
       return result->Error(kErrorInvalidArgs);
     }
     webview_->SetBasicAuth(*host, *username, *password);
+    return result->Success();
+  }
+
+  // dsh-go: setFileChooserEnabled: bool. Only intercept while Dart has a
+  // file picker delegate, otherwise a click on <input type=file> hangs.
+  if (method_name.compare(kMethodSetFileChooserEnabled) == 0) {
+    const bool* enabled = std::get_if<bool>(method_call.arguments());
+    if (!enabled) return result->Error(kErrorInvalidArgs);
+    webview_->SetFileChooserInterceptionEnabled(*enabled);
     return result->Success();
   }
 
