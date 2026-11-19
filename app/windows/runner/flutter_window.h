@@ -17,6 +17,11 @@ class FlutterWindow : public Win32Window {
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
+  // Restore the previous session's maximised state. Must be set before Create:
+  // Win32Window::Show() always shows normal, so FlutterWindow re-maximises on
+  // the first frame itself.
+  void SetStartMaximized(bool maximized) { start_maximized_ = maximized; }
+
  protected:
   // Win32Window:
   bool OnCreate() override;
@@ -30,6 +35,9 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Whether the previous session left the window maximised.
+  bool start_maximized_ = false;
 
   // Windows-only: reads images from the system clipboard for the composer.
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>

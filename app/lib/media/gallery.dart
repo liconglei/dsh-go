@@ -6,11 +6,13 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../desktop/desktop_clipboard.dart' show saveImageToPictures;
 import '../l10n/l10n.dart';
 import '../state/attachments.dart' show inlineImageType;
 
@@ -198,4 +200,15 @@ Future<String> saveToGallery(MediaChannel channel, Uint8List raw, {String? name}
   } on MissingPluginException {
     throw const GallerySaveException('failed');
   }
+}
+
+/// Desktop has no album, so a saved picture becomes a file under
+/// Pictures/DSH Go. Returns its path, or null where [saveToGallery] owns the
+/// picture (phones). Kept separate from [saveToGallery] because the album's
+/// "place" string is not something to show the user, while the desktop path is.
+Future<String?> saveGalleryImageToFile(Uint8List raw, {String? name}) async {
+  if (raw.isEmpty) return null;
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return null;
+  final image = await galleryImage(raw);
+  return saveImageToPictures(image.bytes, name: galleryFileName(name, image.mime));
 }

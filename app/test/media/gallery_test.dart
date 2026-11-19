@@ -10,6 +10,7 @@ import 'package:dsh_app/media/gallery.dart';
 import 'package:dsh_app/state/android_features.dart';
 import 'package:dsh_app/ui/chat/widgets/image_actions.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,6 +43,21 @@ List<MethodCall> _mockMedia(Future<Object?> Function(MethodCall call) answer) {
   });
   addTearDown(
     () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, null),
+  );
+  return calls;
+}
+
+/// The Windows runner's `dsh/clipboard` channel: `saveImagePng` is how a
+/// picture leaves a desktop build (there is no album).
+List<MethodCall> _mockFiles(Future<Object?> Function(MethodCall call) answer) {
+  const channel = MethodChannel('dsh/clipboard');
+  final calls = <MethodCall>[];
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) {
+    calls.add(call);
+    return answer(call);
+  });
+  addTearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null),
   );
   return calls;
 }
@@ -214,6 +230,41 @@ void main() {
         _mockMedia((_) async => throw PlatformException(code: 'cancelled', message: '保存图片已取消。'));
         expect(await save(tester, 'ohos'), isFalse);
         expect(find.byType(SnackBar), findsNothing);
+      });
+
+      group('windows', () {
+        // The platform override has to be cleared inside the test body:
+        // the binding checks it in postTest, which runs before tearDown.
+        const path = r'C:\Users\me\Pictures\DSH Go\a.png';
+
+        testWidgets('there is no album: the notice names the file instead', (tester) async {
+          debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+          final files = _mockFiles((call) async => path);
+          final media = _mockMedia((_) async => 'Pictures/DSH Go/a.png');
+          try {
+            expect(await save(tester, 'android'), isTrue);
+            expect(find.text(path), findsOneWidget);
+            // The album channel does not exist on the desktop; nothing asks it.
+            expect(media, isEmpty);
+            expect(files.single.method, 'saveImagePng');
+            expect((files.single.arguments as Map)['name'], 'a.png');
+          } finally {
+            debugDefaultTargetPlatformOverride = null;
+          }
+          await tester.pump(const Duration(seconds: 3));
+        });
+
+        testWidgets('a failed write still reads as a failure', (tester) async {
+          debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+          _mockFiles((_) async => throw PlatformException(code: 'saveFailed'));
+          try {
+            expect(await save(tester, 'android'), isFalse);
+            expect(find.text('保存失败，请重试'), findsOneWidget);
+          } finally {
+            debugDefaultTargetPlatformOverride = null;
+          }
+          await tester.pump(const Duration(seconds: 5));
+        });
       });
     });
 

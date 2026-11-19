@@ -10,6 +10,7 @@ import 'app.dart';
 import 'dev/frame_probe.dart';
 import 'diagnostics/app_error_log.dart';
 import 'desktop/desktop_notify_channel.dart';
+import 'desktop/desktop_shortcuts.dart';
 import 'desktop/desktop_tray.dart';
 import 'desktop/windows_webview_platform.dart';
 import 'launch/launch_state.dart';
@@ -121,5 +122,12 @@ Future<void> _startDesktop() async {
     container.read(appForegroundProvider.notifier).set(visibility.value);
   });
 
-  runApp(UncontrolledProviderScope(container: container, child: const DshApp()));
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: DesktopShortcuts(
+      onHide: tray.hideWindow,
+      onQuit: tray.exitApp,
+      child: const DshApp(),
+    ),
+  ));
 }

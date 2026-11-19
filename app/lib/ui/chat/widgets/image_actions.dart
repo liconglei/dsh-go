@@ -35,8 +35,14 @@ Future<bool> saveImageToGallery(BuildContext context, ImageBytes load, {String? 
   final messenger = ScaffoldMessenger.maybeOf(context);
   final media = ProviderScope.containerOf(context, listen: false).read(mediaChannelProvider);
   String? failure;
+  String? savedPath;
   try {
-    await saveToGallery(media, await load(), name: name);
+    final raw = await load();
+    // Desktop keeps the picture as a file and has no album to name, so its
+    // path is what the notice shows; phones go through the album as before
+    // and keep saying 「已保存到相册」.
+    savedPath = await saveGalleryImageToFile(raw, name: name);
+    if (savedPath == null) await saveToGallery(media, raw, name: name);
   } on GallerySaveException catch (e) {
     failure = e.code;
   } catch (_) {
@@ -44,7 +50,7 @@ Future<bool> saveImageToGallery(BuildContext context, ImageBytes load, {String? 
   }
   if (failure == null) {
     HapticFeedback.lightImpact();
-    messenger?.showBriefNotice(l10n.chatImageSavedToPhotos);
+    messenger?.showBriefNotice(savedPath ?? l10n.chatImageSavedToPhotos);
     return true;
   }
   if (failure == 'cancelled') return false;

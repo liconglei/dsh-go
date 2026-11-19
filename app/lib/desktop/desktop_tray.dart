@@ -72,6 +72,12 @@ class DesktopTray with TrayListener, WindowListener {
     visibility.value = true;
   }
 
+  /// Ctrl+W: same path as the close button — hide to tray, not quit.
+  Future<void> hideWindow() async {
+    await windowManager.hide();
+    visibility.value = false;
+  }
+
   Future<void> exitApp() async {
     // A remote-only client keeps live WebSocket/long-poll connections and
     // timers alive, so destroying the window alone leaves the Dart VM running

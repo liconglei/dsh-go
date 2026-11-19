@@ -869,7 +869,11 @@ Future<void> saveMediaItems(BuildContext context, WidgetRef ref, String sessionI
   String? failure;
   for (final item in pictures) {
     try {
-      await saveToGallery(media, await mediaItemBytes(ref, sessionId, item), name: item.name);
+      final raw = await mediaItemBytes(ref, sessionId, item);
+      // Desktop writes a file instead of an album entry (see image_actions).
+      if (await saveGalleryImageToFile(raw, name: item.name) == null) {
+        await saveToGallery(media, raw, name: item.name);
+      }
       saved++;
     } on GallerySaveException catch (e) {
       // Backed out of the system's window: stop asking, and nothing to report for it.

@@ -5,6 +5,14 @@
 #include "flutter/generated_plugin_registrant.h"
 
 #include "clipboard_channel.h"
+#include "window_geometry.h"
+
+namespace {
+
+// Trailing timer id for the geometry write; any non-zero value works.
+constexpr UINT_PTR kGeometryTimer = 0xD5;
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -32,6 +40,11 @@ bool FlutterWindow::OnCreate() {
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
+    // Win32Window::Show() always shows normal, so a maximised window from the
+    // last session is restored right after it.
+    if (start_maximized_) {
+      ::ShowWindow(GetHandle(), SW_SHOWMAXIMIZED);
+    }
   });
 
   // Flutter can complete the first frame before the "show window" callback is
@@ -56,6 +69,31 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Window geometry is bookkeeping for the next launch, not message dispatch:
+  // record it before Flutter and the plugins get a chance to consume the
+  // message, and never swallow anything here.
+  switch (message) {
+    case WM_EXITSIZEMOVE:
+      ::KillTimer(hwnd, kGeometryTimer);
+      WriteGeometry(hwnd);
+      break;
+    case WM_SIZE:
+      // Dragging the frame emits WM_SIZE per frame and every WriteGeometry
+      // rewrites window.ini. A trailing timer coalesces that into one write
+      // and still catches maximise/restore, which never send WM_EXITSIZEMOVE.
+      // Persisting as we go matters because tray exit calls exit(0) and never
+      // unwinds main()'s message loop.
+      ::SetTimer(hwnd, kGeometryTimer, 500, nullptr);
+      break;
+    case WM_TIMER:
+      if (wparam == kGeometryTimer) {
+        ::KillTimer(hwnd, kGeometryTimer);
+        WriteGeometry(hwnd);
+        return 0;
+      }
+      break;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

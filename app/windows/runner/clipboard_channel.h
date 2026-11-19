@@ -10,8 +10,9 @@ namespace flutter {
 class FlutterEngine;
 }
 
-// Reads an image from the Windows clipboard as PNG bytes. The channel answers
-// `imagePng` with a Uint8List, or null when the clipboard holds no image.
+// Desktop file helpers. The channel answers `imagePng` with the clipboard's
+// image as PNG bytes (or null), and `saveImagePng` with the absolute path the
+// image was written to under the user's Pictures directory.
 std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
 CreateClipboardChannel(flutter::FlutterEngine* engine);
 
