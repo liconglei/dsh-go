@@ -63,6 +63,7 @@ class Composer extends StatefulWidget {
     this.waitHint,
     this.modeLabel,
     this.onContentInserted,
+    this.onPasteImage,
     this.maxLines = 6,
     this.hardwareEnterSends = false,
     this.sendWhenEmpty = false,
@@ -132,6 +133,10 @@ class Composer extends StatefulWidget {
 
   /// Images from the keyboard (screenshots, stickers); null takes none.
   final ValueChanged<KeyboardInsertedContent>? onContentInserted;
+
+  /// Desktop clipboard images on Ctrl/⌘+V. The event is never consumed: text
+  /// pastes keep going through the editor as before.
+  final Future<void> Function()? onPasteImage;
 
   /// Visible editor lines. Multiline text remains scrollable when limited.
   final int maxLines;
@@ -254,6 +259,14 @@ class _ComposerState extends State<Composer> with SingleTickerProviderStateMixin
   /// Shift+Enter remains a new line. IME composition never sends.
   /// Two consecutive Esc presses within 500 ms stop the turn. The pair is
   /// local to the focused, eligible editor; a single Esc never leaves it.
+  Future<void> _pasteDesktopImage() async {
+    try {
+      await widget.onPasteImage?.call();
+    } catch (_) {
+      // A clipboard read must never break pasting text into the field.
+    }
+  }
+
   KeyEventResult _hardwareKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     final composing = widget.controller.value.composing;
@@ -263,6 +276,12 @@ class _ComposerState extends State<Composer> with SingleTickerProviderStateMixin
     }
     final keys = HardwareKeyboard.instance;
     final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.keyV &&
+        (keys.isControlPressed || keys.isMetaPressed) &&
+        widget.onPasteImage != null) {
+      if (event is! KeyRepeatEvent) unawaited(_pasteDesktopImage());
+      return KeyEventResult.ignored;
+    }
     if (key != LogicalKeyboardKey.escape) _lastEscape = null;
     final sendEnter =
         keys.isControlPressed ||

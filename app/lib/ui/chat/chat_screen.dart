@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../desktop/desktop_clipboard.dart' show readClipboardImage;
 import '../../l10n/l10n.dart';
 import '../../notify/chat_alerts.dart' show approvalText, questionText;
 import '../../runtime/local_footprint.dart' show RuntimeMissing;
@@ -1133,6 +1134,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     _addDrafts([DraftAttachment.sniff('${appL10n.fileImageName}.$extension', data)]);
   }
 
+  /// Windows: Flutter's keyboard content insertion is Android-only, so the
+  /// native runner reads the clipboard's image on Ctrl+V.
+  Future<void> _pasteDesktopImage() async {
+    final bytes = await readClipboardImage();
+    if (bytes == null || !mounted) return;
+    _addDrafts([DraftAttachment.sniff('${appL10n.fileImageName}.png', bytes)]);
+  }
+
   void _addDrafts(List<DraftAttachment> picked, {String? problem}) {
     final room = maxAttachments - _drafts.length;
     var heldBytes = totalAttachmentBytes(_drafts);
@@ -2249,6 +2258,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                     voice: _voice,
                                     onKeyEvent: _composerKey,
                                     onContentInserted: connected ? _pasteContent : null,
+                                    onPasteImage: connected ? _pasteDesktopImage : null,
                                     onStop: _stop,
                                     hasAttachments: _drafts.isNotEmpty,
                                     leading: AttachButton(onPressed: connected ? _attach : null),

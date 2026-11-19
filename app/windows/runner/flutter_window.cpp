@@ -4,6 +4,8 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+#include "clipboard_channel.h"
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -25,6 +27,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  clipboard_channel_ = CreateClipboardChannel(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +43,8 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  // Drop the channel before its messenger (the engine) goes away.
+  clipboard_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
