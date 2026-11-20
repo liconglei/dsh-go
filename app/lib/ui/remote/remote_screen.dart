@@ -29,6 +29,8 @@ import 'pairing_page.dart';
 import 'relay_credit.dart';
 import 'relay_login_sheet.dart';
 import 'ssh_host_form.dart';
+import 'session_backup_page.dart';
+import 'remote_web/remote_web_entry.dart';
 
 /// The form that owns this config: an HTTP host never opens the SSH form (it
 /// would show fields it has no use for), and an SSH host never opens the
@@ -197,6 +199,16 @@ class RemoteScreen extends ConsumerWidget {
               ),
             ],
           ),
+        SettingsSection(
+          children: [
+            SettingsTile(
+              icon: AppIcons.save,
+              spot: Spots.remoteSessionBackup,
+              onTap: () => push(const SessionBackupPage()),
+            ),
+          ],
+        ),
+        const RemoteWebEntry(),
       ],
     );
   }
