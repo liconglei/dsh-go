@@ -132,6 +132,42 @@ bool TakeDibAsPng(std::vector<uint8_t>& out) {
   return !out.empty();
 }
 
+std::string Utf8FromWide(const std::wstring& value);
+
+// Files copied in Explorer are CF_HDROP (not PNG/DIB), which is why pasting a
+// copied image file did nothing. Enumerate the dropped paths and let Dart read
+// each file's bytes into an attachment. Directories are skipped: a folder is
+// not an attachment and reading it as bytes would fail.
+std::vector<std::string> TakeFilePaths() {
+  std::vector<std::string> out;
+  if (!::IsClipboardFormatAvailable(CF_HDROP) || !::OpenClipboard(nullptr)) return out;
+  HDROP drop = static_cast<HDROP>(::GetClipboardData(CF_HDROP));
+  if (drop == nullptr) {
+    ::CloseClipboard();
+    return out;
+  }
+  const UINT count = ::DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+  for (UINT i = 0; i < count; ++i) {
+    const UINT length = ::DragQueryFileW(drop, i, nullptr, 0);
+    if (length == 0) continue;
+    // DragQueryFileW writes `length` chars plus a NUL. The wstring must own
+    // length+1 wchar_ts or the trailing NUL overflows the heap buffer — that
+    // corruption surfaced as 0xc0000374 on the next allocation.
+    std::wstring path(length + 1, L'\0');
+    ::DragQueryFileW(drop, i, path.data(), length + 1);
+    path.resize(length);
+    const DWORD attrs = ::GetFileAttributesW(path.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY)) continue;
+    out.push_back(Utf8FromWide(path));
+  }
+  // The HDROP from GetClipboardData is owned by the clipboard, not by us.
+  // DragFinish is only for an HDROP received via WM_DROPFILES; calling it here
+  // frees memory the clipboard still owns and corrupts the heap on the next
+  // OpenClipboard — the 0xc0000374 seen after pasting then deleting.
+  ::CloseClipboard();
+  return out;
+}
+
 std::string Utf8FromWide(const std::wstring& value) {
   const int length = ::WideCharToMultiByte(CP_UTF8, 0, value.data(),
                                            static_cast<int>(value.size()),
@@ -251,6 +287,16 @@ CreateClipboardChannel(flutter::FlutterEngine* engine) {
             return;
           }
           result->Success(flutter::EncodableValue(Utf8FromWide(path)));
+          return;
+        }
+
+        if (call.method_name() == "filePaths") {
+          const auto paths = TakeFilePaths();
+          flutter::EncodableList list;
+          for (const auto& path : paths) {
+            list.push_back(flutter::EncodableValue(path));
+          }
+          result->Success(flutter::EncodableValue(std::move(list)));
           return;
         }
 

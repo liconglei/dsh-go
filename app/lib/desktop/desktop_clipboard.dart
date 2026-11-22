@@ -6,6 +6,21 @@ import 'package:flutter/services.dart';
 
 const _channel = MethodChannel('dsh/clipboard');
 
+/// Absolute paths of files copied in Explorer (e.g. an image file Ctrl+C),
+/// or empty when the clipboard holds no files. Images copied as pixels come
+/// through [readClipboardImage] instead.
+Future<List<String>> readClipboardFiles() async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return const [];
+  try {
+    final paths = await _channel.invokeListMethod<String>('filePaths');
+    return paths ?? const [];
+  } on MissingPluginException {
+    return const [];
+  } catch (_) {
+    return const [];
+  }
+}
+
 /// The clipboard's image as PNG, or null when it holds none (text, files).
 Future<Uint8List?> readClipboardImage() async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return null;

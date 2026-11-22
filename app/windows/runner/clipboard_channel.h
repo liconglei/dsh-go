@@ -10,9 +10,10 @@ namespace flutter {
 class FlutterEngine;
 }
 
-// Desktop file helpers. The channel answers `imagePng` with the clipboard's
-// image as PNG bytes (or null), and `saveImagePng` with the absolute path the
-// image was written to under the user's Pictures directory.
+// Desktop file helpers. `imagePng` answers with the clipboard's image as PNG
+// bytes (or null); `filePaths` lists absolute paths of files copied in Explorer
+// (CF_HDROP, e.g. a copied image file); `saveImagePng` returns the absolute
+// path the image was written to under the user's Pictures directory.
 std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
 CreateClipboardChannel(flutter::FlutterEngine* engine);
 

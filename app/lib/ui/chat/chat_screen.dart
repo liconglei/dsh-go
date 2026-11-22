@@ -5,6 +5,7 @@
 // floating-composer height sync and the "content scrolls under glass" layout.
 
 import 'dart:async';
+import 'dart:io' show File;
 import 'dart:math' as math;
 
 import 'package:dsh_client/dsh_client.dart';
@@ -13,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../desktop/desktop_clipboard.dart' show readClipboardImage;
+import '../../desktop/desktop_clipboard.dart' show readClipboardFiles, readClipboardImage;
 import '../../l10n/l10n.dart';
 import '../../notify/chat_alerts.dart' show approvalText, questionText;
 import '../../runtime/local_footprint.dart' show RuntimeMissing;
@@ -1138,11 +1139,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   /// Windows: Flutter's keyboard content insertion is Android-only, so the
-  /// native runner reads the clipboard's image on Ctrl+V.
+  /// native runner reads the clipboard on Ctrl+V — either image pixels (a
+  /// screenshot) or files copied in Explorer (CF_HDROP).
   Future<void> _pasteDesktopImage() async {
     final bytes = await readClipboardImage();
-    if (bytes == null || !mounted) return;
-    _addDrafts([DraftAttachment.sniff('${appL10n.fileImageName}.png', bytes)]);
+    if (bytes != null) {
+      if (!mounted) return;
+      _addDrafts([DraftAttachment.sniff('${appL10n.fileImageName}.png', bytes)]);
+      return;
+    }
+    // An image *file* copied in Explorer is CF_HDROP, not PNG/DIB. Read those
+    // paths as attachments. Unreadable paths are skipped rather than reported:
+    // a stale clipboard entry must not interrupt typing.
+    final paths = await readClipboardFiles();
+    if (paths.isEmpty || !mounted) return;
+    final picked = <DraftAttachment>[];
+    for (final path in paths) {
+      try {
+        final file = File(path);
+        final name = path.split(RegExp(r'[\\/]')).last;
+        picked.add(DraftAttachment.sniff(name, await file.readAsBytes()));
+      } catch (_) {}
+    }
+    if (picked.isNotEmpty && mounted) _addDrafts(picked);
   }
 
   void _addDrafts(List<DraftAttachment> picked, {String? problem}) {
