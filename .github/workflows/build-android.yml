@@ -117,8 +117,10 @@ jobs:
           echo "restored keystore for alias $ANDROID_KEY_ALIAS"
       # build-apk.sh reads the build minute for versionCode and verifies the
       # bundle, tawcroot lib, JNI symbols and versionCode before finishing.
+      # The licensed companion pack is not in the repo and CI has no secret
+      # for it, so build without it (the script's explicit escape hatch).
       - name: Build release APK
-        run: bash tooling/build-apk.sh --flavor arm64 --release
+        run: bash tooling/build-apk.sh --flavor arm64 --release --no-companion
       - name: Verify release signature
         shell: bash
         run: |
