@@ -13,8 +13,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../l10n/l10n.dart';
 import '../../tavern/tavern_island_story.dart';
 import '../../tavern/tavern_islands.dart';
+import '../../tavern/tavern_page_perf.dart';
 import '../../tavern/tavern_provider.dart' show tavernPersonaSelectionProvider;
 import '../../tavern/tavern_settings.dart';
 import '../web/web_view_guard.dart';
@@ -73,7 +75,10 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
   late final WebViewGuard _guard = WebViewGuard(onGone: _onGone);
   double _height = 48;
   bool _gone = false;
-  (String, bool, bool, int, String?)? _loaded;
+  (String, bool, bool, bool, int, String?)? _loaded;
+
+  /// Its turn to load came ([_IslandQueue]).
+  bool _turn = false;
 
   /// What its scripts get (build works it out): jQuery, lodash, zod and
   /// YAML, what they may read of the story; not loaded while either is on
@@ -136,7 +141,9 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
   void _open() {
     final theme = Theme.of(context);
     if (_waiting) return;
-    final (noScripts, offline) = ref.read(tavernSettingsProvider.select((s) => (s.islandNoScripts, s.islandOffline)));
+    final (noScripts, offline, lowPower) = ref.read(
+      tavernSettingsProvider.select((s) => (s.islandNoScripts, s.islandOffline, s.lowPower)),
+    );
     // The colours are set in place on the loaded page (_pushColors), never by
     // loading it again: a theme's cross-fade would run the card's scripts, and
     // what they write, once per step.
@@ -144,11 +151,17 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     _colors = {'text': text, 'accent': accent};
     _wantDark = theme.brightness == Brightness.dark;
     _syncDark();
-    final key = (widget.html, noScripts, offline, _libraries.length, _storyKey);
+    final key = (widget.html, noScripts, offline, lowPower, _libraries.length, _storyKey);
     if (key == _loaded) {
       _pushColors();
       return;
     }
+    // Islands that come at once (a chat opened) load one after another.
+    if (!_turn) {
+      _IslandQueue.instance.wait(this);
+      return;
+    }
+    _turn = false;
     _pageLoaded = false;
     _loaded = key;
     final document = tavernIslandDocument(
@@ -161,6 +174,8 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
       offline: offline,
       libraries: _libraries,
       story: _story,
+      lowPower: lowPower,
+      perf: tavernPerfLog,
     );
     final controller = _controller ??= WebViewController();
     final textZoom = MediaQuery.textScalerOf(context).scale(100).round().clamp(50, 300);
@@ -213,6 +228,9 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
           if (messenger != null) _toasts.show(messenger, data);
         case 'toastClear':
           _toasts.clear(data);
+        case 'perf':
+          final id = (widget.html.hashCode & 0xffff).toRadixString(16).padLeft(4, '0');
+          debugPrint(tavernPerfLine('island:$id', data, lowPower: ref.read(tavernSettingsProvider).lowPower));
       }
       return;
     }
@@ -255,9 +273,9 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     return NavigationDecision.prevent;
   }
 
-  /// Works out what its scripts get; loads again when that changed. A
-  /// library or the story that could not be had: it goes without.
-  void _prepare() {
+  /// Works out what its scripts get. A page that reads its own message
+  /// must wait for that actual floor, even when an older story is ready.
+  ({String chatId, Object? error})? _prepare() {
     final scripted =
         !ref.watch(tavernSettingsProvider.select((s) => s.islandNoScripts)) && tavernIslandHasScript(widget.html);
     final libraries = scripted ? ref.watch(tavernCanvasLibrariesProvider) : null;
@@ -265,7 +283,6 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     final story = at == null ? null : ref.watch(tavernIslandStoryProvider(at.chatId));
     // The reader's name (SillyTavern's name1).
     final persona = at == null ? null : ref.watch(tavernPersonaSelectionProvider(at.chatId));
-    final waiting = (libraries?.isLoading ?? false) || (story?.isLoading ?? false) || (persona?.isLoading ?? false);
     // zod and YAML (over half a megabyte) only where the page could use them.
     final libs = [
       for (final (i, code) in (libraries?.value ?? const <String>[]).indexed)
@@ -273,9 +290,9 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     ];
     final name1 = persona?.value?.persona?.name;
     final from = (story?.value, at?.nodeId, at?.text, name1);
-    if (waiting == _waiting && libs.length == _libraries.length && from == _storyFrom) return;
-    _storyFrom = from;
-    final read = at == null
+    final read = from == _storyFrom
+        ? _story
+        : at == null
         ? null
         : story?.value?.forMessage(
             at.nodeId,
@@ -285,6 +302,16 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
             persona: name1 ?? '',
             chatId: at.chatId,
           );
+    final missing = at != null && (read == null || (story?.hasError ?? false))
+        ? (chatId: at.chatId, error: story?.error)
+        : null;
+    final waiting =
+        missing != null ||
+        (libraries?.isLoading ?? false) ||
+        (story?.isLoading ?? false) ||
+        (persona?.isLoading ?? false);
+    if (waiting == _waiting && libs.length == _libraries.length && from == _storyFrom) return missing;
+    _storyFrom = from;
     // What else moves without loading the page again.
     const told = ['latest', 'chat', 'last', 'global', 'character', 'floors'];
     final own = read == null ? null : jsonEncode({...read}..removeWhere((k, _) => told.contains(k)));
@@ -294,7 +321,7 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     if (waiting == _waiting && libs.length == _libraries.length && own == _storyKey) {
       // The rest of the story moved: the page is told, not loaded again.
       if (moved) _live ? _tell() : _untold = true;
-      return;
+      return missing;
     }
     _storyKey = own;
     _waiting = waiting;
@@ -303,6 +330,7 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(_open);
     });
+    return missing;
   }
 
   void _onGone(bool crashed) {
@@ -311,8 +339,26 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
     WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_guard.destroy()));
   }
 
+  /// Its turn: it loads now.
+  void _go() {
+    _turn = true;
+    setState(_open);
+  }
+
+  /// How far it is from the screen (logical px; 0 on it), for the queue.
+  double _distance() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return double.infinity;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final view = View.of(context);
+    final screen = view.physicalSize.height / view.devicePixelRatio;
+    final bottom = top + box.size.height;
+    return bottom < 0 ? -bottom : max(0, top - screen);
+  }
+
   @override
   void dispose() {
+    _IslandQueue.instance.leave(this);
     _guard.dispose();
     _toasts.dispose();
     super.dispose();
@@ -320,9 +366,34 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
 
   @override
   Widget build(BuildContext context) {
-    // Its guards changed: load again.
-    ref.listen(tavernSettingsProvider.select((s) => (s.islandNoScripts, s.islandOffline)), (_, _) => _open());
-    _prepare();
+    // Its guards or 省电渲染 changed: load again.
+    ref.listen(
+      tavernSettingsProvider.select((s) => (s.islandNoScripts, s.islandOffline, s.lowPower)),
+      (_, _) => _open(),
+    );
+    final missing = _prepare();
+    if (missing != null) {
+      final l10n = context.l10n;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                missing.error == null
+                    ? l10n.tavernIslandStoryWaiting
+                    : l10n.tavernIslandStoryFailed(missing.error.toString()),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            TextButton(
+              onPressed: () => ref.invalidate(tavernIslandStoryProvider(missing.chatId)),
+              child: Text(l10n.commonRetry),
+            ),
+          ],
+        ),
+      );
+    }
     final controller = _controller;
     if (_gone || controller == null) return const SizedBox(height: TavernHtmlIsland.minHeight);
     return AnimatedSize(
@@ -333,5 +404,39 @@ class _TavernHtmlIslandState extends ConsumerState<TavernHtmlIsland> {
         child: WebViewWidget(controller: controller),
       ),
     );
+  }
+}
+
+/// Islands waiting to load, started one at a time, the nearest the screen
+/// first, a beat apart: islands that come at once (a chat opened) do not each
+/// build a web view and parse their page, libraries and all, in the same
+/// frames.
+class _IslandQueue {
+  _IslandQueue._();
+
+  static final instance = _IslandQueue._();
+
+  /// How long after one starts the next may.
+  static const beat = Duration(milliseconds: 48);
+
+  final _waiting = <_TavernHtmlIslandState>{};
+  Timer? _timer;
+
+  /// [island] loads when its turn comes. Those that ask in the same frame
+  /// are all there before the first is picked.
+  void wait(_TavernHtmlIslandState island) {
+    _waiting.add(island);
+    _timer ??= Timer(Duration.zero, _next);
+  }
+
+  void leave(_TavernHtmlIslandState island) => _waiting.remove(island);
+
+  void _next() {
+    _timer = null;
+    if (_waiting.isEmpty) return;
+    final first = _waiting.reduce((a, b) => b._distance() < a._distance() ? b : a);
+    _waiting.remove(first);
+    first._go();
+    _timer = Timer(beat, _next);
   }
 }

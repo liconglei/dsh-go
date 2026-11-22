@@ -350,6 +350,7 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
   final Map<String, ({ChatRow row, double gap, Widget widget})> _built = {};
   Duration? _builtMotion;
   Locale? _builtLocale;
+  ThemeShapeSpec _builtShapes = const ThemeShapeSpec();
   ChatState? _builtState;
 
   /// A streaming draft has words, not only thinking: earlier rows read that
@@ -942,9 +943,11 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
     // A language switch rebuilds every element (app.dart) without an
     // inherited change; rows hold [appL10n] strings in their arguments.
     final locale = AppLocale.current;
-    if (motion != _builtMotion || locale != _builtLocale) {
+    final shapes = DshThemeStyle.of(context).shapes;
+    if (motion != _builtMotion || locale != _builtLocale || shapes != _builtShapes) {
       _builtMotion = motion;
       _builtLocale = locale;
+      _builtShapes = shapes;
       _built.clear();
     }
 
@@ -1081,7 +1084,7 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
   Widget _buildRow(int index) {
     final row = _rows[index];
     final previous = index > 0 ? _rows[index - 1] : null;
-    final gap = _gapBefore(row, previous);
+    final gap = _gapBefore(row, previous, _builtShapes);
     final fresh = _fresh.remove(row.key);
     // A row's first appearance (fade in, settle) plays once: that build is
     // not kept, or scrolling back to the row would play it again.
@@ -1097,7 +1100,8 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
   }
 
   Widget _rowFrame(ChatRow row, double gap, int? fresh) {
-    final padding = EdgeInsets.fromLTRB(AppSpace.gutter, gap, AppSpace.gutter, 0);
+    final gutter = _builtShapes.gutter;
+    final padding = EdgeInsets.fromLTRB(gutter, gap, gutter, 0);
     final body = StreamFadeIn(
       enabled: fresh != null,
       index: fresh ?? 0,
@@ -1139,16 +1143,17 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
     _ => false,
   };
 
-  /// 换轮 24、同一轮 8、相邻过程行 0、卡片 12、脚注 4(全是 4 的倍数)。
-  static double _gapBefore(ChatRow row, ChatRow? previous) {
+  /// 换轮 24、同一轮 8、相邻过程行 0、卡片 12、脚注 4(全是 4 的倍数),
+  /// 启用主题包时遵循主题声明的 [ThemeShapeSpec.turnGap] 与 [ThemeShapeSpec.inTurnGap]。
+  static double _gapBefore(ChatRow row, ChatRow? previous, [ThemeShapeSpec shapes = const ThemeShapeSpec()]) {
     if (previous == null) return 0;
-    if (_isUser(row)) return _isUser(previous) ? AppSpace.sm : AppSpace.xxl;
+    if (_isUser(row)) return _isUser(previous) ? shapes.inTurnGap : shapes.turnGap;
     if (_isProcess(row) && _isProcess(previous)) return 0;
     if (row is ApprovalRow || row is QuestionRow || row is ChangeCardRow || row is ArtifactCardRow) {
       return AppSpace.md;
     }
     if (row is TurnFootnoteRow) return AppSpace.xs;
-    return AppSpace.sm;
+    return shapes.inTurnGap;
   }
 
   Widget _pendingBubble(PendingPrompt prompt) {
@@ -1455,6 +1460,34 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
   }
 
   Widget _rowWidget(ChatRow row) {
+    final (seq, messageKey) = switch (row) {
+      AssistantRow(:final item) => (item.seq, item.rowKey),
+      ToolCallRow(:final item) => (item.seq, null),
+      ToolGroupRow(:final tools) => (tools.first.seq, null),
+      _ => (null, null),
+    };
+    // The stable message key carries its turn even in a partial history page.
+    final match = messageKey == null ? null : RegExp(r'^m([0-9]+)[.]').firstMatch(messageKey);
+    int? turn = match == null ? null : int.tryParse(match.group(1)!);
+    if (turn == null && seq != null) {
+      for (final trace in ref.read(chatProvider(widget.sessionId)).turns.reversed) {
+        if (seq > trace.startSeq && (trace.endSeq == null || seq < trace.endSeq!)) {
+          turn = trace.turn;
+          break;
+        }
+      }
+    }
+    final body = _rowContent(row);
+    if (turn == null) return body;
+    // A row must not start the global sessions watcher just to supply an image base.
+    final knownSessions = ref.exists(sessionsProvider) ? ref.read(sessionsProvider).value : null;
+    final cwd =
+        ref.read(chatProvider(widget.sessionId).notifier).header?.cwd ??
+        knownSessions?.where((session) => session.sessionId == widget.sessionId).firstOrNull?.cwd;
+    return MarkdownImageScope(sessionId: widget.sessionId, baseDir: cwd, turn: turn, child: body);
+  }
+
+  Widget _rowContent(ChatRow row) {
     return switch (row) {
       UserRow(:final item) when dshUiReplyChip(item.text) != null => DshUiReplyChip(label: dshUiReplyChip(item.text)!),
       UserRow(:final item) => UserBubble(
@@ -1463,6 +1496,7 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
             ? null
             : SentAttachments.echoed(sessionId: widget.sessionId, images: item.images, files: item.files),
         onEdit: widget.onEditPrompt == null ? null : () => _editPrompt(item),
+        onQuote: widget.onQuote == null ? null : _quote,
       ),
       PendingRow(:final prompt) => _pendingBubble(prompt),
       AssistantRow(:final item, :final showActions, :final footnote) => _reply(item, showActions, footnote),
@@ -1490,7 +1524,7 @@ class _ChatListState extends ConsumerState<ChatList> with SingleTickerProviderSt
         row: row,
         settle: _settling.remove(row.key),
         buildRow: _rowWidget,
-        gapBefore: _gapBefore,
+        gapBefore: (r, prev) => _gapBefore(r, prev, _builtShapes),
       ),
       NoticeRowData(:final item) => NoticeRow(item: item, action: _noticeAction(item)),
       ChangeCardRow(:final files) => ChangeCard(files: files),

@@ -2948,6 +2948,9 @@ class L10nZh extends L10n {
   String get botsPetWhaleGirl => '鲸娘';
 
   @override
+  String get botsPetPinkFish => '小粉鱼';
+
+  @override
   String get botsPetNone => '不显示';
 
   @override
@@ -5051,7 +5054,7 @@ class L10nZh extends L10n {
   String get companionLogTitle => '聊天记录';
 
   @override
-  String get companionContextUnsupported => '这台主机的伙伴还不支持上下文：她的名字、设定和刚才发生的事传不过去，只发你说的话。升级主机或换成轻量模式就好。';
+  String get companionContextUnsupported => '这台主机还不支持她的上下文：名字、设定、刚才发生的事和手机里的记忆都传不过去，只发你说的话。升级主机或换成轻量模式就好。';
 
   @override
   String get companionLogEmpty => '还没有说过话。';
@@ -5259,14 +5262,14 @@ class L10nZh extends L10n {
 
   @override
   String companionMemoryScope(String host) {
-    return '保存在$host上。她现在还不会自己想起这些，之后的版本会接上。';
+    return '保存在$host，两种模式共用。你可以随时改或忘。';
   }
 
   @override
   String get companionMemoryAdd => '添加';
 
   @override
-  String get companionMemoryEdit => '修改';
+  String get companionMemoryEdit => '更新现况';
 
   @override
   String get companionMemorySave => '保存';
@@ -5284,7 +5287,7 @@ class L10nZh extends L10n {
   String get companionMemoryEmpty => '还没有记下什么';
 
   @override
-  String get companionMemoryEmptyHint => '想让她记住的事，可以在这里写下来。只存在当前主机上，随时能改能删。';
+  String get companionMemoryEmptyHint => '你们聊过的事，她会自己慢慢记住。想让她特别记着什么，也可以写在这里。';
 
   @override
   String get companionMemoryUnsupported => '这台主机还不能保存她的记忆';
@@ -5371,10 +5374,10 @@ class L10nZh extends L10n {
   String get companionNotConnectedTryLight => '现在连不上主机。只想聊天的话，可以在右上角菜单换成轻量模式。';
 
   @override
-  String get companionMenuRestartLightHint => '清掉这台手机上的聊天记录';
+  String get companionMenuRestartLightHint => '开始新对话，保留旧记录';
 
   @override
-  String get companionMenuRestartLightConfirm => '她会忘记这段对话，这台手机上的聊天记录会被删掉。';
+  String get companionMenuRestartLightConfirm => '开始一段新对话。她记得的事和旧聊天记录都会保留。';
 
   @override
   String get companionInviteRest => '要不要陪我在软垫上歇一会儿？';
@@ -5865,6 +5868,1199 @@ class L10nZh extends L10n {
 
   @override
   String get companionAdaptNetwork => '网络不通';
+
+  @override
+  String get companionMemoryMigrationPending => '旧记忆还没搬完，原来的资料已保留。稍后可以再试。';
+
+  @override
+  String get companionMemoryWaiting => '这次还没整理好，原话已保存在手机上。';
+
+  @override
+  String get companionMemoryWidgetPending => '小组件上那句旧话稍后会清掉。';
+
+  @override
+  String get companionMemoryConfiguration => '当前通道还不能自动记下新内容。原话已留好，也可以直接改手记。';
+
+  @override
+  String get companionMemoryWording => '只改文字';
+
+  @override
+  String get companionMemoryPin => '置顶';
+
+  @override
+  String get companionMemoryUnpin => '取消置顶';
+
+  @override
+  String get companionMemoryConfirmReality => '这是我的现实情况';
+
+  @override
+  String get companionMemorySources => '我的原话';
+
+  @override
+  String get companionMemoryEditSource => '修改这句原话';
+
+  @override
+  String get companionMemoryDeleteSource => '删除手机原话';
+
+  @override
+  String get companionMemoryDeleteSourceHint => '删除手机保存的这句原话及只靠它的记忆。主机旧对话和你另存的副本不会随之删除。';
+
+  @override
+  String get companionMemoryNoSource => '这条是手写的，或原来的出处已经找不到了。';
+
+  @override
+  String get companionMemoryCleanupUnknown => '还不能确认所有该删的原话，这次没有删除。';
+
+  @override
+  String get companionMemoryTooLong => '原话太长，这一版未自动提取';
+
+  @override
+  String get companionMemoryNotExtracted => '这一批没有自动记下来';
+
+  @override
+  String get companionMemoryPending => '还没自动整理';
+
+  @override
+  String get companionMemorySourceKept => '原话保留';
+
+  @override
+  String get companionMemoryDisplayOnly => '旧记录，仅保留原文';
+
+  @override
+  String get companionMemoryCancelled => '计划已取消';
+
+  @override
+  String get companionMemoryLess => '少主动提';
+
+  @override
+  String get companionMemoryNever => '别主动提';
+
+  @override
+  String get companionMemoryNormal => '以后可以聊';
+
+  @override
+  String get companionMemoryCancelPlan => '取消这项计划';
+
+  @override
+  String get companionMemoryActions => '这件事的选项';
+
+  @override
+  String get companionMemoryWhich => '你说的是哪件事呀？';
+
+  @override
+  String get companionMemoryForgotten => '好，忘掉了。';
+
+  @override
+  String get companionMemoryNeverDone => '嗯，不提了。';
+
+  @override
+  String get companionMemoryLessDone => '好，我少说一点。';
+
+  @override
+  String get companionMemoryNormalDone => '好呀，想聊的时候随时聊。';
+
+  @override
+  String get companionMemoryCancelledDone => '好，那就不等着问你了。';
+
+  @override
+  String get companionMemoryCorrected => '啊，是我记岔了。';
+
+  @override
+  String get companionMemoryHostSourceRemaining => '手机原话已删除。主机的旧对话仍保留；需要时可在对话列表删除那段对话。';
+
+  @override
+  String get companionMemoryHostRestarted => '主机刚重启过。这句话已留好，再点一次发送就能接着聊。';
+
+  @override
+  String get companionMemoryUsage => '模型用量';
+
+  @override
+  String get companionMemoryUsageHint => '最近的请求记录。未知不表示免费；费用按已核费率估算，不是供应商账单。主机记录只覆盖已捕获的伙伴聊天。';
+
+  @override
+  String get companionMemoryUsageUnknown => '未知';
+
+  @override
+  String get companionMemoryUsageExtract => '记下内容';
+
+  @override
+  String get companionMemoryUsageOrganize => '整理记忆';
+
+  @override
+  String get companionMemoryUsageChat => '聊天';
+
+  @override
+  String get companionMemoryUsageWaiting => '等待本次的用量记录';
+
+  @override
+  String get companionMemoryUsageIncomplete => '本次用量范围仍不完整，已知记录已保留';
+
+  @override
+  String get companionMemoryUsageInput => '未缓存输入';
+
+  @override
+  String get companionMemoryUsageCacheRead => '缓存读取';
+
+  @override
+  String get companionMemoryUsageCacheWrite => '缓存写入';
+
+  @override
+  String get companionMemoryUsageOutput => '输出';
+
+  @override
+  String get companionMemoryUsageCost => '估算费用';
+
+  @override
+  String get companionMemoryUsageNotSent => '本地未发出';
+
+  @override
+  String get companionMemoryUsageEmpty => '还没有记录到用量';
+
+  @override
+  String get companionMemoryHostUnsupported => '这台主机的版本有点旧，在这里她暂时想不起你们聊过的事。升级主机就好。';
+
+  @override
+  String get companionMemoryPostponedDone => '好，那等你定了新时间再说。';
+
+  @override
+  String get companionTasksTitle => '交代的事';
+
+  @override
+  String get companionTasksEmpty => '你还没交代我什么事呢。';
+
+  @override
+  String get companionTasksEarlier => '更早的事';
+
+  @override
+  String get companionTaskMissing => '这件事我这儿找不到了。';
+
+  @override
+  String get companionTaskChanged => '这件事后来又改过了，我按最新的来。';
+
+  @override
+  String get companionReminderEdit => '改提醒';
+
+  @override
+  String get companionReminderCancel => '不用提醒了';
+
+  @override
+  String get companionReminderText => '提醒你什么';
+
+  @override
+  String get companionReminderWhen => '哪天几点';
+
+  @override
+  String get companionReminderWhenHint => '比如 2026-11-21 08:00';
+
+  @override
+  String get companionReminderZone => '时区';
+
+  @override
+  String get companionReminderZoneHint => '比如 Asia/Shanghai 或 +08:00';
+
+  @override
+  String get companionReminderQueued => '好，提醒记下了，还没确认设好。';
+
+  @override
+  String get companionReminderDone => '设好了，到点我叫你。';
+
+  @override
+  String get companionReminderUnknown => '这条提醒我不太确定设上没，你看一眼系统闹钟？';
+
+  @override
+  String get companionReminderFailed => '这条提醒没设上，抱歉。';
+
+  @override
+  String get companionReminderCancelled => '好，这条不提醒了。';
+
+  @override
+  String get companionReminderTextMissing => '要提醒你什么呀？';
+
+  @override
+  String get companionReminderDateMissing => '哪天提醒你？';
+
+  @override
+  String get companionReminderTimeMissing => '那天几点提醒你？';
+
+  @override
+  String get companionReminderZoneMissing => '按哪个时区算？';
+
+  @override
+  String get companionReminderGap => '那天这个钟点会被跳过去（夏令时），换个时间吧。';
+
+  @override
+  String get companionReminderOverlap => '那天这个钟点有两次，要哪一次？';
+
+  @override
+  String get companionReminderFirst => '第一次';
+
+  @override
+  String get companionReminderSecond => '第二次';
+
+  @override
+  String get companionReminderExactMissing => '手机还没让我准点提醒，这条没设上。去系统设置里打开「闹钟和提醒」就好。';
+
+  @override
+  String get companionReminderNotificationsMissing => '通知没开，这条还没设上。去系统设置里打开通知就好。';
+
+  @override
+  String get companionReminderChannelMissing => '「提醒」这类通知被关掉了，这条还没设上。去系统设置里打开就好。';
+
+  @override
+  String get companionReminderGroupMissing => '提醒所在的那组通知被关掉了，这条还没设上。去系统设置里打开就好。';
+
+  @override
+  String get companionReminderTimePassed => '约好的时间已经过了，我就没再补响。';
+
+  @override
+  String get companionReminderInvalidTime => '这个时间我没弄明白，再告诉我一次哪天、几点、哪个时区？';
+
+  @override
+  String get companionReminderCancelUnknown => '取消的要求已记下，还没确认这条提醒已撤下。';
+
+  @override
+  String get companionReminderWhich => '你说的是哪一条？去「交代的事」里点给我看看。';
+
+  @override
+  String get companionReminderSyntax => '告诉我哪天几点吧，比如“明早八点提醒我带证件”。';
+
+  @override
+  String get companionReminderSaveFailed => '刚才没记下来，你写的还在，再试一次？';
+
+  @override
+  String get companionReminderSettings => '去系统设置';
+
+  @override
+  String get companionReminderCheck => '刷新';
+
+  @override
+  String get companionReminderUnknownNotification => '这条提醒可能已经响过了，我不太确定。';
+
+  @override
+  String companionReminderUnhandled(String text) {
+    return '这句我还没法帮你办：$text';
+  }
+
+  @override
+  String companionReminderCancelSource(String text) {
+    return '取消$text的提醒';
+  }
+
+  @override
+  String get companionReminderNotHere => '这条不是在这台手机上设的，我在这儿改不了也撤不了。';
+
+  @override
+  String get companionReminderPlatformUnavailable => '现在看不到手机上的提醒，等会儿再看看？';
+
+  @override
+  String get companionReminderPastRegistration => '之前是设好过的。';
+
+  @override
+  String get companionLookupAccepted => '好，我去查一下，查完放在「交代的事」里。';
+
+  @override
+  String get companionLookupSyntax => '想查哪家馆、哪一天？告诉我全名和日期吧。';
+
+  @override
+  String get companionLookupDateMissing => '想查哪一天的？给我个具体日期。';
+
+  @override
+  String get companionLookupZoneMissing => '那边是哪个时区？日期和时区一起告诉我吧。';
+
+  @override
+  String get companionLookupWhich => '你想撤哪个查询？去「交代的事」里点一下。';
+
+  @override
+  String get companionLookupQueued => '我在查了，稍等。';
+
+  @override
+  String get companionLookupDone => '查到了，出处放在下面。';
+
+  @override
+  String get companionLookupPartial => '查到一些，但那天到底怎样还说不准。';
+
+  @override
+  String get companionLookupFailed => '这次没找到靠得住的说法，没法确定。';
+
+  @override
+  String get companionLookupUnknown => '这次没得到明确结果，我先不重复去查。';
+
+  @override
+  String get companionLookupCancelled => '好，不查了。';
+
+  @override
+  String get companionLookupCancelUnknown => '已记下不再查，还没确认原来的查询已停。';
+
+  @override
+  String get companionLookupUnavailable => '现在连不上能查的地方，还没查到结果。';
+
+  @override
+  String get companionLookupDeadline => '约好的时间过了，就查到这儿，不再接着查了。';
+
+  @override
+  String get companionLookupInputLimit => '资料太多，我一次读不完，先把出处给你。';
+
+  @override
+  String get companionLookupQueryLong => '名字有点长，换个简短点、不会认错的叫法？';
+
+  @override
+  String get companionLookupAnswerIncomplete => '资料找到了，但我还没理清楚，先把出处给你。';
+
+  @override
+  String get companionLookupNotHere => '这个不是在这台手机上查的，在这儿我只能给你看看结果。';
+
+  @override
+  String get companionLookupSources => '我看过的地方';
+
+  @override
+  String get companionLookupSearchOnly => '只看了搜索摘要，没点进去细看';
+
+  @override
+  String get companionLookupNoTitle => '没有标题';
+
+  @override
+  String get companionLookupCancel => '不用查了';
+
+  @override
+  String get companionLookupSaveFailed => '刚才没办成，等会儿再试试？';
+
+  @override
+  String companionLookupCancelSource(String name) {
+    return '取消$name的查询';
+  }
+
+  @override
+  String companionLookupObservedAt(String time) {
+    return '$time 看的';
+  }
+
+  @override
+  String companionLookupViewSources(String name) {
+    return '看看出处 · $name';
+  }
+
+  @override
+  String get companionNotesTitle => '把笔记整理成待办';
+
+  @override
+  String get companionNotesView => '看看这件事';
+
+  @override
+  String get companionNotesSyntax => '要整理哪天的笔记？你离开以后要不要接着做？说好了我再请你选文件夹。';
+
+  @override
+  String get companionNotesDateMissing => '日期、时区或者截止时间还没说清楚，再告诉我一下？';
+
+  @override
+  String get companionNotesConnect => '先连上放笔记的那台电脑，再选文件夹。';
+
+  @override
+  String get companionNotesOriginalHost => '这件事在原来那台电脑上，连上它我才能接着看。';
+
+  @override
+  String get companionNotesUnavailable => '这台电脑现在还接不了这件事。';
+
+  @override
+  String get companionNotesNoDirectory => '还没选文件夹，所以还没开始。';
+
+  @override
+  String get companionNotesChooseDirectory => '选笔记文件夹';
+
+  @override
+  String get companionNotesChooseOutput => '选存放的文件夹';
+
+  @override
+  String get companionNotesKeepDirectory => '笔记文件夹不变';
+
+  @override
+  String get companionNotesKeepOutput => '存放的文件夹不变';
+
+  @override
+  String get companionNotesWhich => '想撤哪一件整理？去「交代的事」里点一下。';
+
+  @override
+  String get companionNotesQueued => '记下了，等电脑接手。';
+
+  @override
+  String get companionNotesRunning => '电脑接下这件事了，结果还没出来。';
+
+  @override
+  String get companionNotesDone => '整理好了，待办存成了新文件，点开就能看。';
+
+  @override
+  String get companionNotesPartial => '只整理了一部分就停了，已有的可以先看看。';
+
+  @override
+  String get companionNotesFailed => '这次没整理成。';
+
+  @override
+  String get companionNotesWaiting => '这件事暂时还做不了，先留在这里。';
+
+  @override
+  String get companionNotesUnknown => '电脑那边现在什么情况，我还不太清楚。';
+
+  @override
+  String get companionNotesCancelUnknown => '已记下不再整理，还没确认电脑是否停下。已经写好的文件会保留。';
+
+  @override
+  String get companionNotesCancelled => '好，不整理了，已经写好的文件还在。';
+
+  @override
+  String get companionNotesPauseUnavailable => '你说过离开就先停，可我现在没法确定你离没离开，所以还没开始。要不改成离开也接着做？';
+
+  @override
+  String get companionNotesOpportunityLost => '刚才没赶上交给电脑，你又说过别等它上线。要继续的话再跟我说一声。';
+
+  @override
+  String get companionNotesDeadline => '约好的截止时间过了，就不再接着做了。';
+
+  @override
+  String get companionNotesOriginalPending => '电脑收到你的修改了，稍等它理一理。';
+
+  @override
+  String get companionNotesSaveFailed => '刚才没办成，这件事还在，等会儿再试试？';
+
+  @override
+  String get companionNotesModifiedDay => '我会把这个文件夹里那天改过的笔记（Markdown 和纯文本）整理成一页待办，原文件不动。';
+
+  @override
+  String get companionNotesNoInputs => '那天这个文件夹里没有改过的笔记，所以没写待办。';
+
+  @override
+  String get companionNotesOutputExists => '已经有同名文件了，我没覆盖它。改个新文件名就好。';
+
+  @override
+  String get companionNotesFileCountLimit => '符合的笔记超过 20 份，有点多。换个小点的文件夹，或者分几次来？';
+
+  @override
+  String get companionNotesFileSizeLimit => '有一份笔记超过 64 KiB，太长了。缩小点范围吧，我不想只读一半。';
+
+  @override
+  String get companionNotesTotalSizeLimit => '这些笔记加起来超过 256 KiB，有点多。缩小范围，或者分几次来？';
+
+  @override
+  String get companionNotesModelLimit => '笔记太多，我一次读不下。缩小点范围吧，我不想只读一半。';
+
+  @override
+  String get companionNotesPause => '离开就先停';
+
+  @override
+  String get companionNotesForegroundStart => '在这里继续';
+
+  @override
+  String get companionNotesForegroundReady => '留在这里时，我请电脑继续做。离开后会请它先停，回来再核对进度。';
+
+  @override
+  String get companionNotesForegroundUnknown => '还没确认电脑现在的进度，先刷新看看。';
+
+  @override
+  String get companionNotesContinue => '离开也接着做';
+
+  @override
+  String get companionNotesAllowQueue => '电脑不在线就等它上线再做';
+
+  @override
+  String get companionNotesNoQueue => '电脑不在线就别等了';
+
+  @override
+  String get companionNotesApproval => '电脑那边要你点个头，才能接着做。';
+
+  @override
+  String get companionNotesOpenFile => '看看这页待办';
+
+  @override
+  String get companionNotesFileMissing => '这个文件找不到了，我没重新生成。';
+
+  @override
+  String get companionNotesFileChanged => '这个文件后来被改过，已经不是我当时写的样子了。';
+
+  @override
+  String get companionNotesFileUnknown => '这个文件现在打不开。';
+
+  @override
+  String get companionNotesCancel => '不用整理了';
+
+  @override
+  String get companionNotesEdit => '改一下';
+
+  @override
+  String get companionNotesDate => '哪天的笔记';
+
+  @override
+  String get companionNotesFilename => '新文件名（.md 或 .txt）';
+
+  @override
+  String get companionNotesDeadlineField => '新的截止时间（不填就不变）';
+
+  @override
+  String get companionNotesClearDeadline => '不设截止时间';
+
+  @override
+  String get companionNotesKeepDeadline => '截止时间不变';
+
+  @override
+  String companionNotesSourceDirectory(String path) {
+    return '笔记在：$path';
+  }
+
+  @override
+  String companionNotesOutputDirectory(String path) {
+    return '存到：$path';
+  }
+
+  @override
+  String companionNotesDue(String time) {
+    return '$time 前做完';
+  }
+
+  @override
+  String companionNotesCancelSource(String name) {
+    return '取消《$name》的笔记整理';
+  }
+
+  @override
+  String companionNotesAmendSource(
+    String date,
+    String name,
+    String deadline,
+    String afterExit,
+    String queue,
+    String source,
+    String output,
+  ) {
+    return '把笔记整理改成：$date的笔记，存成《$name》，截止时间：$deadline；$afterExit；$queue；$source；$output。';
+  }
+
+  @override
+  String get companionNotesRetry => '让电脑接着做';
+
+  @override
+  String get companionNotesSubmitSaved => '现在交给电脑';
+
+  @override
+  String get companionNotesResendOriginal => '再交给电脑一次';
+
+  @override
+  String get companionNotesResendCancel => '再跟电脑说一次不做了';
+
+  @override
+  String get companionNotesResendAmend => '再把改动发给电脑';
+
+  @override
+  String get companionMapChoose => '用哪个地图打开？';
+
+  @override
+  String get companionMapSystemChoice => '让我在系统里选择';
+
+  @override
+  String get companionMapDone => '地址已交给地图打开。';
+
+  @override
+  String get companionMapUnknown => '还不能确定地图有没有打开，不会自动再打开。';
+
+  @override
+  String get companionMapCancelled => '已取消这次打开。如果地图已经打开，不会替你关闭。';
+
+  @override
+  String get companionMapUnavailable => '现在用不了地图，地址还在，可以复制。';
+
+  @override
+  String get companionMapNotHere => '这是之前留下的记录。需要的话，可以复制地址或再打开一次。';
+
+  @override
+  String get companionMapFailed => '地图没打开，地址在这里，可以复制。';
+
+  @override
+  String get companionMapChoiceWaiting => '刚才打开的是选择页面，还不能确定地址交给了哪个地图。';
+
+  @override
+  String get companionMapWaiting => '这次还没打开地图，地址已保留。';
+
+  @override
+  String get companionMapQueued => '地址记下了，还没打开地图。';
+
+  @override
+  String get companionMapSyntax => '请给一个明确的完整地址，例如：在地图打开“文华路 18 号东门”。有多个地址时，请先选一个。';
+
+  @override
+  String get companionMapWhich => '想改哪个地址，或重新打开哪一个？可以在交代的事里选。';
+
+  @override
+  String get companionMapNoTarget => '这次没选地图，还没有打开。';
+
+  @override
+  String get companionMapSaveFailed => '这次没能确认地图是否打开；不会自动再试。';
+
+  @override
+  String companionMapTarget(String label) {
+    return '所选地图：$label';
+  }
+
+  @override
+  String get companionMapCopy => '复制原地址';
+
+  @override
+  String get companionMapView => '查看地址';
+
+  @override
+  String get companionMapReopen => '再打开一次';
+
+  @override
+  String get companionMapCancel => '取消这次打开';
+
+  @override
+  String get companionMapReopenSource => '用地图再次打开这个地址';
+
+  @override
+  String get companionMapCancelSource => '取消这个地址的地图打开';
+
+  @override
+  String get companionFindTitle => '找稿件';
+
+  @override
+  String get companionFindSyntax => '请说明在哪个文件夹这一层找、找哪天改过的稿件，以及你离开后还要不要继续。有截止时间的话，也一起告诉我。';
+
+  @override
+  String get companionFindWhich => '要停下哪次找稿？可以在交代的事里选。';
+
+  @override
+  String get companionFindConnect => '还没选过这台电脑上的文件夹。请先连上电脑选一下。';
+
+  @override
+  String get companionFindSavedDirectory => '选一个之前用过的文件夹';
+
+  @override
+  String get companionFindSeven => '你说的七点是上午还是晚上？';
+
+  @override
+  String get companionFindMorningSeven => '上午 07:00';
+
+  @override
+  String get companionFindEveningSeven => '晚上 19:00';
+
+  @override
+  String get companionFindDeadlineMissing => '还没定好截止时间，这次先不开始。';
+
+  @override
+  String companionFindChooseDirectory(String name) {
+    return '选择“$name”文件夹';
+  }
+
+  @override
+  String get companionFindChooseAgain => '重新选择文件夹';
+
+  @override
+  String get companionFindKeepDirectory => '还找原来的文件夹';
+
+  @override
+  String get companionFindUnavailable => '这台电脑现在还不能帮你找稿并打开原稿。';
+
+  @override
+  String get companionFindNoDirectory => '还没选文件夹，这次先不开始。';
+
+  @override
+  String get companionFindDone => '找完了，结果在下面。';
+
+  @override
+  String get companionFindPartial => '这次没能全找完，已找到的稿件和没查完的地方在下面。';
+
+  @override
+  String get companionFindFailed => '这次没能找完，原来的记录还在。';
+
+  @override
+  String get companionFindWaiting => '暂时还没能继续找，稍后可以再查看。';
+
+  @override
+  String get companionFindCancelled => '已停止继续找，之前找到的清单还在。';
+
+  @override
+  String get companionFindCancelUnknown => '已记下不再找，但还没确认电脑是否停下。已有清单还在。';
+
+  @override
+  String get companionFindCancel => '停止找稿';
+
+  @override
+  String get companionFindCancelSource => '取消这次找稿';
+
+  @override
+  String companionFindAmendSource(
+    String date,
+    String formats,
+    String deadline,
+    String afterExit,
+    String queue,
+    String source,
+  ) {
+    return '修改找稿：只找这一层在 $date 改过的 $formats 文件。截止：$deadline；$afterExit；$queue；$source。';
+  }
+
+  @override
+  String get companionFindDate => '稿件修改日期';
+
+  @override
+  String companionFindScope(String formats) {
+    return '只找这一层在这一天修改的 $formats 文件，不改原稿。';
+  }
+
+  @override
+  String companionFindSourceDirectory(String path) {
+    return '查找目录：$path';
+  }
+
+  @override
+  String get companionFindReport => '这次找到的稿件';
+
+  @override
+  String get companionFindPreviousReport => '之前找到的稿件';
+
+  @override
+  String companionFindCoverage(String entries, String supported, String matches) {
+    return '查看了 $entries 项，其中 $supported 份是所选格式，找到 $matches 份符合日期的稿件。';
+  }
+
+  @override
+  String get companionFindEnumerationComplete => '这一层的文件名已检查完，能否打开见下面的结果。查找时后来加入的文件可能不在结果里。';
+
+  @override
+  String get companionFindEnumerationPartial => '还有一些地方没查完。';
+
+  @override
+  String get companionFindEntryLimit => '这次最多检查 200 项，剩下的还没查。';
+
+  @override
+  String get companionFindCandidateLimit => '符合日期的稿件超过 20 份，这次先列出其中 20 份。';
+
+  @override
+  String get companionFindEmpty => '查过的范围里，没有这一天改过的所选格式稿件。';
+
+  @override
+  String companionFindGap(String name) {
+    return '这项还没查清楚：$name';
+  }
+
+  @override
+  String companionFindModified(String time) {
+    return '修改时间：$time';
+  }
+
+  @override
+  String get companionFindWasOpenable => '当时能打开；现在点开时会确认它有没有变化。';
+
+  @override
+  String get companionFindWasUnreadable => '当时没能读到这份稿件。';
+
+  @override
+  String get companionFindOpenSource => '打开这份原稿';
+
+  @override
+  String get companionFindSourceOffline => '清单还在。连上原来的电脑后才能打开稿件。';
+
+  @override
+  String get companionFindSourceMissing => '这份稿件现在找不到了，当时的清单还在。';
+
+  @override
+  String get companionFindSourceChanged => '这份稿件已被替换或修改，不能确认还是当时那一份。';
+
+  @override
+  String get companionFindSourceUnreadable => '这份稿件现在没能完整打开；没有换成别的文件。';
+
+  @override
+  String get companionFindSourceUnknown => '现在还打不开这份稿件，请连上原来的电脑再试。';
+
+  @override
+  String get companionFindDeadline => '已经过了约好的时间，不会再开始新的查找。已有结果会留在这里。';
+
+  @override
+  String get companionFindOriginalPending => '电脑已收到修改，还需要确认原先那次找稿。';
+
+  @override
+  String get companionFindUnknown => '还没确认电脑有没有收到，或找到了哪一步。';
+
+  @override
+  String get companionCompareTitle => '对比两版稿件';
+
+  @override
+  String get companionCompareA => 'A · 旧稿';
+
+  @override
+  String get companionCompareB => 'B · 新稿';
+
+  @override
+  String get companionCompareSyntax => '请按 A 旧稿、B 新稿选这两份，说明是否等电脑上线、离开后是否继续；如果有截止时间，也请说清楚。';
+
+  @override
+  String get companionCompareWhich => '要停止哪次对稿？请打开那件事再点停止。';
+
+  @override
+  String get companionCompareDeadlineMissing => '这次还没确定截止时刻，请把日期、时间和时区说清楚。';
+
+  @override
+  String get companionCompareUnavailable => '这台电脑目前还不能对比两份稿件。';
+
+  @override
+  String get companionCompareConnect => '先连上原来的电脑，选好 A 旧稿和 B 新稿；还没有可供离线选择的两份原稿。';
+
+  @override
+  String get companionCompareAmbiguousFile => '这个名字对应不止一份已选稿件。请连上原来的电脑重新选。';
+
+  @override
+  String get companionCompareNoInputs => '还没选齐两份原稿，这次没有开始对比。';
+
+  @override
+  String get companionCompareOriginalHost => '约定和已有结果会保留。连上原来的电脑后再查看。';
+
+  @override
+  String get companionCompareSaveFailed => '这次对稿还没核清，请稍后再查看这件事。';
+
+  @override
+  String companionCompareSaved(String side) {
+    return '选择之前选过的 $side';
+  }
+
+  @override
+  String companionCompareChooseDirectory(String side) {
+    return '选择 $side 所在的文件夹';
+  }
+
+  @override
+  String companionCompareFilename(String side) {
+    return '输入 $side 的文件名';
+  }
+
+  @override
+  String get companionCompareFileLimit => '输入所选文件夹内的确切文件名。只支持 Markdown 或 txt，每份最多 64 KiB；不会改动原文件。';
+
+  @override
+  String get companionCompareFilenameMissing => '请填写文件名。';
+
+  @override
+  String get companionCompareQueued => '两份稿件记下了，等电脑接手。';
+
+  @override
+  String get companionCompareRunning => '两份稿件已经交给电脑了，对照还没出来。';
+
+  @override
+  String get companionCompareDone => '两份稿件的对照已经准备好。';
+
+  @override
+  String get companionComparePartial => '这次只完成了一部分，已核的变化和还没核清的地方在下面。';
+
+  @override
+  String get companionCompareCancelled => '已停止继续对稿，之前留下的对照还在。';
+
+  @override
+  String get companionCompareCancelUnknown => '已记下停止对稿，还没确认电脑是否停下。已有结果会保留。';
+
+  @override
+  String get companionCompareWaiting => '这次还不能继续对稿，原来的两份选择和约定会保留。';
+
+  @override
+  String get companionCompareUnknown => '还没核清电脑做到哪里，不会自动重新比较。';
+
+  @override
+  String get companionCompareFailed => '这次没能完成两稿对比，原文件没有因此被改写。';
+
+  @override
+  String get companionCompareDeadline => '原定时间已经到了，不会把这次对稿顺延到别的时间。';
+
+  @override
+  String get companionCompareOriginalPending => '修改已经记下，原来的两稿约定还没补齐。';
+
+  @override
+  String get companionCompareReport => '这次的文字对照';
+
+  @override
+  String get companionCompareUnfinishedReport => '未完成的对照';
+
+  @override
+  String get companionComparePreviousReport => '之前留下的文字对照';
+
+  @override
+  String get companionCompareUnread => '这份稿件还没有完整读到。';
+
+  @override
+  String get companionCompareChanged => '读到过这份稿件，但交还结果时没能确认还是原来那一份。';
+
+  @override
+  String get companionCompareIncomplete => '这次还有没完成的部分，已确认的文字变化会保留。';
+
+  @override
+  String get companionCompareIdentical => '这次读到的两份稿件没有文字改动。';
+
+  @override
+  String companionCompareCoverage(String total, String shown) {
+    return '这次核到 $total 组文字变化，列出其中 $shown 组。';
+  }
+
+  @override
+  String get companionCompareSourceOrder => '下面按原文顺序列出已核的改动，还没排出重练重点。';
+
+  @override
+  String companionCompareDifference(String number) {
+    return '文字变化 $number';
+  }
+
+  @override
+  String get companionCompareNoExcerpt => '这一侧没有可展示的原文短句。';
+
+  @override
+  String get companionCompareSuggestions => '排练建议';
+
+  @override
+  String companionComparePractice(String number, String practice) {
+    return '变化 $number：$practice';
+  }
+
+  @override
+  String get companionCompareSuggestionsUnknown => '排练建议还没核清，已核的文字变化会保留。';
+
+  @override
+  String get companionCompareSuggestionsMissing => '还没准备好排练建议，下面保留已核的文字变化。';
+
+  @override
+  String companionCompareParagraph(String range) {
+    return '第 $range 段';
+  }
+
+  @override
+  String companionCompareBetween(String before, String after) {
+    return '第 $before 段与第 $after 段之间';
+  }
+
+  @override
+  String companionCompareAfter(String number) {
+    return '第 $number 段后';
+  }
+
+  @override
+  String companionCompareBefore(String number) {
+    return '第 $number 段前';
+  }
+
+  @override
+  String companionCompareLines(String range) {
+    return '第 $range 行附近';
+  }
+
+  @override
+  String get companionCompareCancel => '停止对稿';
+
+  @override
+  String get companionCompareCancelSource => '取消这次对稿，保留已经交还的对照。';
+
+  @override
+  String companionCompareAmendSource(String deadline, String exit, String queue, String inputs) {
+    return '修改这次对稿：$deadline；$exit；$queue；$inputs。两个原文件都别动。';
+  }
+
+  @override
+  String get companionCompareChooseAgain => '重新选择 A 旧稿和 B 新稿';
+
+  @override
+  String get companionCompareKeepInputs => '保留原来选定的 A 旧稿和 B 新稿';
+
+  @override
+  String get companionCompareNewDeadline => '填写时按这次修改所用的当地时区解释；留空则保留原定截止。';
+
+  @override
+  String get companionReceiptTitle => '票据整理';
+
+  @override
+  String get companionReceiptSyntax => '请说清是哪四张票、新表的名字，以及离开后是否继续。我只会新建，不覆盖旧表。';
+
+  @override
+  String get companionReceiptUnavailable => '这台电脑目前不能整理这些票据。';
+
+  @override
+  String get companionReceiptConnect => '先连回原电脑，选好四张票和放新表的文件夹；没有选过的原件，我不能替你猜。';
+
+  @override
+  String get companionReceiptWhich => '想停哪一张表？请到那件事里点取消。';
+
+  @override
+  String get companionReceiptSaveFailed => '这次还没交妥，原话留着。稍后可再试。';
+
+  @override
+  String get companionReceiptOriginalHost => '要连回原来的电脑才能继续交代或查看结果。';
+
+  @override
+  String get companionReceiptNoInputs => '四张票和放表的文件夹还没选齐，这次先不交给电脑。';
+
+  @override
+  String companionReceiptInput(String index) {
+    return '第 $index 份';
+  }
+
+  @override
+  String companionReceiptSavedInput(String index) {
+    return '选之前选过的第 $index 份票据';
+  }
+
+  @override
+  String companionReceiptChooseDirectory(String index) {
+    return '第 $index 份票据在哪个文件夹？';
+  }
+
+  @override
+  String companionReceiptFilename(String index) {
+    return '第 $index 份票据的文件名';
+  }
+
+  @override
+  String companionReceiptFormats(String formats) {
+    return '这台电脑可读 $formats，每份最多 4 MiB。请填所选文件夹中的文件名。';
+  }
+
+  @override
+  String get companionReceiptSavedOutput => '把新表放到之前选过的哪个文件夹？';
+
+  @override
+  String get companionReceiptQueued => '手机记下了，还没交给电脑。';
+
+  @override
+  String get companionReceiptRunning => '电脑已经接了，还没有可交的表。';
+
+  @override
+  String get companionReceiptDone => '新表已经写好，约定的字段都核实了。';
+
+  @override
+  String get companionReceiptPartial => '新表已经写好，还有几项没核实，表里已说明。';
+
+  @override
+  String get companionReceiptCancelled => '后面不再做了。此前已写好的表仍留着。';
+
+  @override
+  String get companionReceiptFailed => '这次没做成可交的新表，下面保留已查到的情况。';
+
+  @override
+  String get companionReceiptWaiting => '这件事还在等条件，尚未写好表。';
+
+  @override
+  String get companionReceiptUnknown => '还没核清表有没有写好，先查原来那件事，不另做一张。';
+
+  @override
+  String get companionReceiptCancelUnknown => '已记下先停后面的事；刚才的表有没有写好，还要向原电脑核实。';
+
+  @override
+  String get companionReceiptNoFields => '这四张目前没有可用于成表的已核实字段，没有创建空表。';
+
+  @override
+  String get companionReceiptOutputExists => '那里已有同名文件，我没有覆盖。可以改一个新文件名再交代。';
+
+  @override
+  String get companionReceiptDeadline => '已经过了约定时间，不再开始新的整理；此前的结果仍可核对。';
+
+  @override
+  String get companionReceiptOriginalPending => '电脑还没收齐原来的交代，暂时不会开始做表。';
+
+  @override
+  String get companionReceiptReport => '已查到的票据字段';
+
+  @override
+  String get companionReceiptPreviousReport => '此前查到的票据字段';
+
+  @override
+  String companionReceiptCoverage(String count) {
+    return '四份里，$count 份有已核实的字段。';
+  }
+
+  @override
+  String get companionReceiptImageScope => '这里只读取了 PDF 的文字层，图片里的日期或其他字段没有核实。';
+
+  @override
+  String get companionReceiptUnread => '这份原件还没完整读到。';
+
+  @override
+  String get companionReceiptParseFailed => '这份原件的文字还没完整提取出来。';
+
+  @override
+  String get companionReceiptChanged => '发布前没能核准还是原来的那份，这行不能当作已核实。';
+
+  @override
+  String get companionReceiptDate => '日期';
+
+  @override
+  String get companionReceiptItem => '项目';
+
+  @override
+  String get companionReceiptAmount => '金额';
+
+  @override
+  String companionReceiptUnverified(String reason) {
+    return '未核：$reason';
+  }
+
+  @override
+  String get companionReceiptFieldUnknown => '原文还不足以确认';
+
+  @override
+  String companionReceiptSourcePosition(String from, String to) {
+    return '第 $from–$to 行';
+  }
+
+  @override
+  String companionReceiptPdfPosition(String page, String from, String to) {
+    return '第 $page 页，文字提取第 $from–$to 行';
+  }
+
+  @override
+  String companionReceiptOpenWorkbook(String name) {
+    return '打开 $name';
+  }
+
+  @override
+  String get companionReceiptOpenFailed => '现在没能打开当时那份表。原来的完成记录仍保留，不会自动重做。';
+
+  @override
+  String get companionReceiptChooseAgain => '重新选择四张票';
+
+  @override
+  String get companionReceiptKeepInputs => '四张票仍用原来的';
+
+  @override
+  String get companionReceiptOutputName => '新表文件名（.xlsx）';
+
+  @override
+  String get companionReceiptCancelSource => '取消这次整理票据，后面没做的先停，已写好的表保留。';
+
+  @override
+  String companionReceiptAmendSource(
+    String name,
+    String deadline,
+    String afterExit,
+    String queue,
+    String inputs,
+    String output,
+  ) {
+    return '把这次票据整理改为新建《$name》；截止：$deadline；离开以后：$afterExit；等待电脑：$queue；原件：$inputs；目标文件夹：$output。';
+  }
+
+  @override
+  String get companionReceiptNoText => '没有读到可用文字层，图片里的字段还没核实。';
+
+  @override
+  String get companionReceiptPassword => '原件需要密码，这次未能读取。';
+
+  @override
+  String get companionReceiptPdfUnavailable => '这台电脑还不能提取 PDF 文字。';
+
+  @override
+  String get companionReceiptLimit => '超过这次可读取的大小、页数或文字范围。';
+
+  @override
+  String get companionReceiptDateUnknown => '没有可核实的完整日期，或日期有歧义。';
+
+  @override
+  String get companionReceiptItemUnknown => '没有可核实的明确项目。';
+
+  @override
+  String get companionReceiptAmountUnknown => '金额或币种还不能确认。';
+
+  @override
+  String get companionReceiptKeepOutput => '仍放原来的文件夹';
+
+  @override
+  String get companionReceiptPriorResult => '此前约定写出的表已找到；新的约定尚未完成。';
 
   @override
   String get automaticDiagnosticsRecover => '恢复本地记录';
@@ -6841,6 +8037,21 @@ class L10nZh extends L10n {
 
   @override
   String get engineProvidersOfficial => '官方';
+
+  @override
+  String get engineProvidersChatGptOfficial => 'ChatGPT 官方订阅';
+
+  @override
+  String get engineSubscriptionReconnectAccount => '登录原账号';
+
+  @override
+  String get engineSubscriptionUseAnotherAccount => '使用其他账号';
+
+  @override
+  String get engineSubscriptionPlanNotEnabled => '此授权无法使用 ChatGPT 订阅模型。';
+
+  @override
+  String get engineSubscriptionRevocationUnconfirmed => '已在本机退出，但没能确认 OpenAI 已撤销授权。';
 
   @override
   String get engineProvidersSubscription => '订阅';
@@ -10090,6 +11301,25 @@ class L10nZh extends L10n {
 
   @override
   String get liveBlockedText => '在系统设置里为 DSH Go 打开「实时活动」（有的手机叫「在流体云中显示」）';
+
+  @override
+  String get liveStop => '停止';
+
+  @override
+  String get liveStale => '暂停更新 · 打开 App 查看';
+
+  @override
+  String get liveIosSubtitle => '干活、等你处理时，在灵动岛和锁屏上显示宠物、进度和用时';
+
+  @override
+  String get liveIosFooter =>
+      '需要 iOS 16.2 及以上。有灵动岛的 iPhone 显示在岛上，其他机型只在锁屏上。锁屏上不显示对话标题。iOS 17 起可以在卡片上直接停止这一轮。App 被系统挂起后，卡片会标出「暂停更新」。';
+
+  @override
+  String get liveIosUnsupported => '需要 iOS 16.2 或更高版本';
+
+  @override
+  String get liveIosBlockedText => '在「设置」→「DSH Go」里打开「实时活动」';
 
   @override
   String get localeTitle => '语言';
@@ -15337,7 +16567,7 @@ class L10nZh extends L10n {
   String get remoteDshAttached => '已连接既有 DSH';
 
   @override
-  String get remoteStartupSection => '启动';
+  String get remoteConnectionSettings => '连接设置';
 
   @override
   String get remoteAutoConnectOnStartup => '连接上次使用的主机';
@@ -16143,9 +17373,6 @@ class L10nZh extends L10n {
   String get remoteSshDirect => '不经过第三方服务器';
 
   @override
-  String get remoteOtherMethods => '其他方式';
-
-  @override
   String get remoteWebConsole => '网页版远程控制台';
 
   @override
@@ -16203,6 +17430,11 @@ class L10nZh extends L10n {
 
   @override
   String get remoteSwitchWarning => '一次只连一台主机，切换会断开上一台';
+
+  @override
+  String remoteHostOfflineHint(String name) {
+    return '「$name」现在不在线。在那台电脑上打开 DSH 后再试';
+  }
 
   @override
   String get remoteRefreshHosts => '刷新主机列表';
@@ -16811,9 +18043,6 @@ class L10nZh extends L10n {
   String get remoteNetworkIceProtocol => 'ICE 协议';
 
   @override
-  String get remoteTransferSettings => '远程传输';
-
-  @override
   String get remoteCompactHistory => '精简历史';
 
   @override
@@ -17048,13 +18277,13 @@ class L10nZh extends L10n {
   String get stateRemoteUploadTooLarge => '文件超过远程上传协议的大小上限';
 
   @override
-  String get remoteWebOpen => '打开 DSH Web';
-
-  @override
   String get remoteWebTitle => 'DSH Web';
 
   @override
   String get remoteWebOpening => '正在打开 DSH Web…';
+
+  @override
+  String get remoteWebFailed => '没能打开 DSH Web';
 
   @override
   String get remoteWebRefresh => '刷新首页';
@@ -17075,10 +18304,10 @@ class L10nZh extends L10n {
   String get remoteWebUnsafeUrl => '网页地址无法验证，已停止打开。请检查主机配置。';
 
   @override
-  String get remoteWebExchangeRejected => '访问验证失败，请返回后重新打开。';
+  String get remoteWebExchangeRejected => '访问验证没有通过，请重试。';
 
   @override
-  String get remoteWebSessionExpired => '网页连接已过期，请返回后重新打开。';
+  String get remoteWebSessionExpired => '网页连接已过期，请重试。';
 
   @override
   String get remoteWebPlatformUnavailable => '当前平台暂不支持此网页入口。请使用原生远程界面。';
@@ -19102,6 +20331,30 @@ class L10nZh extends L10n {
   String get starPromptPlea => '拜托你啦~ 这真的很重要！！';
 
   @override
+  String get starPromptBody2 => '看来你挺喜欢这里嘛！点个 Star 只要几秒钟，却能让更多人发现 DSH Go，本鱼也会更有干劲！';
+
+  @override
+  String get starPromptPlea2 => '就差你这一颗星星啦~';
+
+  @override
+  String get starPromptBody3 => 'DSH Go 不收费、没有广告，全靠大家的 Star 让更多人看到。如果它帮到了你，就送本鱼一颗星星吧！';
+
+  @override
+  String get starPromptPlea3 => '本鱼眼巴巴地等着呢~';
+
+  @override
+  String get starPromptBody4 => '这么久了，本鱼一直都在。如果 DSH Go 已经成了你每天都会打开的 App，点个 Star 就是给作者最好的回礼。';
+
+  @override
+  String get starPromptPlea4 => '求求你啦，就点一下下~';
+
+  @override
+  String get starPromptBody5 => '这是本鱼最后一次问你啦。不管点不点，本鱼都会一直陪着你。要是愿意的话，点个 Star 让本鱼开心一下吧！';
+
+  @override
+  String get starPromptPlea5 => '最后一次，拜托啦！';
+
+  @override
   String get starPromptStar => '去 GitHub 点 Star';
 
   @override
@@ -19980,7 +21233,7 @@ class L10nZh extends L10n {
   String get stateProviderKeyRejected => 'API Key 无效或没有权限';
 
   @override
-  String get stateProviderModelsMissing => '找不到模型列表，检查 Base URL';
+  String get stateProviderModelsMissing => '找不到模型列表。检查 Base URL；有的服务不提供模型列表，可以手动添加模型';
 
   @override
   String get stateProviderRateLimited => '请求太频繁，稍后再试';
@@ -20687,7 +21940,7 @@ class L10nZh extends L10n {
   String get tavernReady => '就绪';
 
   @override
-  String get tavernPreviewStatus => '预览 · 回复是示例，还没接上模型';
+  String get tavernPreviewStatus => '预览 · 示例回复';
 
   @override
   String get tavernRegenerate => '重新生成';
@@ -20708,7 +21961,7 @@ class L10nZh extends L10n {
   String get tavernErrorNoKey => '先在设置里填 DeepSeek API Key';
 
   @override
-  String get tavernKeyMissing => '还没填 DeepSeek API Key，填好就能开始。';
+  String get tavernKeyMissing => '还没填 DeepSeek API Key';
 
   @override
   String get tavernKeyMissingAction => '去填写';
@@ -20726,10 +21979,10 @@ class L10nZh extends L10n {
   String get tavernErrorTooLong => '对话太长了，超出了模型的上下文';
 
   @override
-  String get tavernCutShort => '回复写到回复上限，在这里断开了。可以接着写，或在酒馆设置 › 生成里把回复上限调高。';
+  String get tavernCutShort => '回复到了回复上限。可以接着写，或调高这段对话所用预设的回复上限。';
 
   @override
-  String get tavernFiltered => '这条回复被模型的内容过滤拦下了一部分。';
+  String get tavernFiltered => '回复有一部分被内容过滤拦下了。';
 
   @override
   String get tavernErrorBalance => 'DeepSeek 账户余额不足，充值后再试';
@@ -20855,9 +22108,6 @@ class L10nZh extends L10n {
   String get tavernPresetNotText => '这个文件不是文本';
 
   @override
-  String get tavernPresetsEmpty => '还没有预设';
-
-  @override
   String get tavernPresetsEmptyMessage => 'SillyTavern 导出的预设 JSON 和 dsh-preset-enhance 的分享包都能导入。';
 
   @override
@@ -20909,7 +22159,7 @@ class L10nZh extends L10n {
   String get tavernRegexEmpty => '还没有全局正则';
 
   @override
-  String get tavernRegexEmptyMessage => 'SillyTavern 导出的正则 JSON（一条或一组）都能导入。全局正则对所有对话生效；卡和预设自带的正则跟着它们走。';
+  String get tavernRegexEmptyMessage => '可以导入 SillyTavern 导出的正则 JSON，一条或一组';
 
   @override
   String get tavernRegexUnnamed => '未命名';
@@ -20957,7 +22207,7 @@ class L10nZh extends L10n {
   String get tavernLorebooksEmpty => '还没有独立世界书';
 
   @override
-  String get tavernLorebooksEmptyMessage => 'SillyTavern 导出的世界书 JSON 都能导入。设为全局后对所有对话生效；卡自带的世界书跟着卡走。';
+  String get tavernLorebooksEmptyMessage => '可以导入 SillyTavern 导出的世界书 JSON';
 
   @override
   String tavernLorebookCount(int count) {
@@ -21210,7 +22460,7 @@ class L10nZh extends L10n {
   String get tavernPersonasEmptyMessage => '人设是你在对话里扮演的人：一个名字和一段介绍，角色就知道你是谁。';
 
   @override
-  String get tavernPersonasNote => '长按设为默认或删除。没有单独选人设的对话用默认的。';
+  String get tavernPersonasNote => '长按可设为默认或删除';
 
   @override
   String get tavernPersonaUnsetDefault => '不再作为默认';
@@ -21242,13 +22492,13 @@ class L10nZh extends L10n {
   String get tavernPersonaNameHint => '角色怎么称呼你';
 
   @override
-  String get tavernPersonaDescriptionHelp => '模型会读到这段：你是谁、什么样子、和角色是什么关系。';
+  String get tavernPersonaDescriptionHelp => '你是谁、什么样子、和角色的关系';
 
   @override
   String get tavernPersonaDescriptionHint => '比如：镇上新来的医生，话不多，总拎着一个旧皮箱。';
 
   @override
-  String get tavernPersonaDefaultSubtitle => '新对话和没有单独选人设的对话都用它';
+  String get tavernPersonaDefaultSubtitle => '没单独选人设的对话都用它';
 
   @override
   String get tavernPersonaDelete => '删除人设';
@@ -21280,6 +22530,9 @@ class L10nZh extends L10n {
   String get tavernPersonaNotSet => '未设置';
 
   @override
+  String get tavernLibraryNone => '无';
+
+  @override
   String get tavernFieldName => '名字';
 
   @override
@@ -21292,7 +22545,7 @@ class L10nZh extends L10n {
   String get tavernExportPng => '导出角色卡（PNG）';
 
   @override
-  String get tavernExportPngSubtitle => '设定藏在图片里，SillyTavern 等酒馆都能导入';
+  String get tavernExportPngSubtitle => 'SillyTavern 等酒馆都能导入';
 
   @override
   String get tavernExportJson => '导出为 JSON';
@@ -21493,7 +22746,7 @@ class L10nZh extends L10n {
   String get tavernLorebook => '世界书';
 
   @override
-  String get tavernLorebookSubtitle => '这张卡自带的设定条目';
+  String get tavernLorebookSubtitle => '卡里自带的条目';
 
   @override
   String tavernLorebookEntries(int count) {
@@ -21521,13 +22774,13 @@ class L10nZh extends L10n {
   String get tavernImportFromFile => '从文件导入';
 
   @override
-  String get tavernImportFromFileSubtitle => '角色卡、预设、世界书、正则、快速回复或聊天记录，会自己认出来';
+  String get tavernImportFromFileSubtitle => '角色卡、预设、世界书等，自动识别';
 
   @override
   String get tavernImportFromLink => '从链接导入';
 
   @override
-  String get tavernImportFromLinkSubtitle => 'Chub、RisuRealm 的角色页，或卡文件的直链';
+  String get tavernImportFromLinkSubtitle => 'Chub、RisuRealm 或卡文件的链接';
 
   @override
   String get tavernLinkInvalid => '这不是一个网址';
@@ -21645,7 +22898,7 @@ class L10nZh extends L10n {
 
   @override
   String tavernStorybookWholeNote(int count) {
-    return '一共 $count 句，隐藏的消息不放进去。EPUB 能用微信读书、Apple 图书等打开。';
+    return '一共 $count 句，隐藏的消息不放进去';
   }
 
   @override
@@ -21702,7 +22955,7 @@ class L10nZh extends L10n {
   String get tavernLive2d => 'Live2D 形象';
 
   @override
-  String get tavernLive2dSubtitle => '视觉小说排版里用它代替卡面，会动、说话时会张嘴';
+  String get tavernLive2dSubtitle => '视觉小说排版里代替卡面';
 
   @override
   String get tavernLive2dNone => '未导入';
@@ -21870,14 +23123,13 @@ class L10nZh extends L10n {
   String get tavernStageStateEmpty => '这张卡还没有状态';
 
   @override
-  String get tavernStageStateNote => '卡里定义了状态以后，好感、属性、背包、时间地点都会在这里，每回合变了什么会标出来（「+5」），你也能直接改。没定义的老卡会在这里列出它的变量。';
+  String get tavernStageStateNote => '卡里定义了状态，好感、属性、背包等就会显示在这里。';
 
   @override
   String get tavernStageDirectorEmpty => '导演还没上场';
 
   @override
-  String get tavernStageDirectorNote =>
-      '打开导演后，它会在每回合之后在后台读剧情：给下一回合留一条看不见的提示，记下自己的笔记（默认藏着，怕剧透），再在输入框上方给你三个建议回复。它不替你说话，也不写正文。';
+  String get tavernStageDirectorNote => '导演会读剧情，给下一回合留提示，并在输入框上方给出三条建议。';
 
   @override
   String get tavernStageTurnNone => '还没有可看的回合';
@@ -21926,7 +23178,7 @@ class L10nZh extends L10n {
   }
 
   @override
-  String get tavernLorebookChatNote => '只在这段对话里用。标着「全局」的本来就对所有对话生效。';
+  String get tavernLorebookChatNote => '只对这段对话。「全局」的对所有对话都生效。';
 
   @override
   String get tavernLorebookCharacterNote => '这个角色的每段对话都会用，卡自带的世界书照常一起用。';
@@ -21980,7 +23232,7 @@ class L10nZh extends L10n {
   String get tavernPrefillReasoning => '思考';
 
   @override
-  String get tavernPrefillNote => '开着时，这段文字作为回复的开头发给模型，模型从这里接着写。放在「思考」只在开了思考时生效，没开就放进正文。「接着写」的回合不用它。';
+  String get tavernPrefillNote => '放在「思考」只在开了思考时生效，没开就放进正文。「接着写」的回合不用它。';
 
   @override
   String get tavernPresetPromptEmpty => '空着';
@@ -22158,13 +23410,7 @@ class L10nZh extends L10n {
   String get tavernSendOnly => '只发，不回复';
 
   @override
-  String get tavernSendOnlySubtitle => '这句放进故事，她先不接话';
-
-  @override
   String get tavernNarrate => '以旁白身份发';
-
-  @override
-  String get tavernNarrateSubtitle => '作为叙述插进故事，不算你说的话';
 
   @override
   String get tavernSendFailed => '没能发出去';
@@ -22173,7 +23419,7 @@ class L10nZh extends L10n {
   String get tavernStateVariables => '变量';
 
   @override
-  String get tavernStateVariablesNote => '卡和对话里 {{setvar}} 这类宏记下的变量，到当前这条为止。点一项看全部，也能直接改。';
+  String get tavernStateVariablesNote => '宏（如 {{setvar}}）记下的变量，到当前这条为止。点一项可查看或修改。';
 
   @override
   String get tavernData => '数据';
@@ -22501,6 +23747,12 @@ class L10nZh extends L10n {
   String get tavernIslandNoScripts => '网页里不运行卡的脚本';
 
   @override
+  String get tavernSPresetExternal => '让预设自己加载 SPreset';
+
+  @override
+  String get tavernSPresetExternalSubtitle => '默认用内置的 SPreset，不从预设作者的网站加载脚本；打开后改用预设自己加载的';
+
+  @override
   String get tavernIslandNoScriptsSubtitle => '卡自带的 JavaScript 不运行；要靠脚本动起来的状态栏会停住';
 
   @override
@@ -22514,7 +23766,7 @@ class L10nZh extends L10n {
 
   @override
   String tavernSessionUsageNote(int count) {
-    return '当前这条线上 $count 条回复的合计；换掉的备选不算';
+    return '当前分支 $count 条回复的合计，换掉的备选不算';
   }
 
   @override
@@ -22523,6 +23775,11 @@ class L10nZh extends L10n {
   @override
   String tavernSessionUsageCost(String usd) {
     return '约 $usd，按 DeepSeek 官方价，分高峰和低谷时段算；法定节假日全天是低谷价，那几天这里会算高一点';
+  }
+
+  @override
+  String tavernStageCost(String usd) {
+    return '约 $usd，按 DeepSeek 官方价估算';
   }
 
   @override
@@ -22537,7 +23794,7 @@ class L10nZh extends L10n {
   String get tavernWriteOwn => '自己写一个角色';
 
   @override
-  String get tavernWriteOwnSubtitle => '从一张空白卡开始，名字、设定和开场白都自己填';
+  String get tavernWriteOwnSubtitle => '从一张空白卡开始';
 
   @override
   String get tavernNewCharacterName => '新角色';
@@ -22621,10 +23878,10 @@ class L10nZh extends L10n {
   }
 
   @override
-  String get tavernStateNote => '卡定义的状态，到当前这条消息为止。这回合变了的标着「+5」这样的记号；点一项看全部，也能直接改，改动记在这条消息上，换回答、切分支会跟着回退。';
+  String get tavernStateNote => '到当前这条消息为止。点一项可查看或修改，改动随这条消息回退。';
 
   @override
-  String get tavernStatePreview => '还没开始记，下面是卡给的初始值。';
+  String get tavernStatePreview => '还没有记录，下面是初始值。';
 
   @override
   String get tavernStateChanged => '变了';
@@ -22662,7 +23919,7 @@ class L10nZh extends L10n {
   String get tavernDirectorAuto => '自动导演';
 
   @override
-  String get tavernDirectorAutoNote => '只对这段对话。开了以后每隔几个回合，在回复写完后多问一次模型：下一拍往哪走、给你三条可以做的事。每次都会多用一些额度。';
+  String get tavernDirectorAutoNote => '只对这段对话。每隔几个回合多请求一次模型，会多用一些额度。';
 
   @override
   String get tavernDirectorRun => '让导演想一想';
@@ -22677,13 +23934,13 @@ class L10nZh extends L10n {
   String get tavernDirectorSuggestions => '你可以…';
 
   @override
-  String get tavernDirectorSuggestionsNote => '点一条放进输入框，改不改、发不发由你。';
+  String get tavernDirectorSuggestionsNote => '点一条放进输入框';
 
   @override
   String get tavernDirectorNotes => '导演笔记';
 
   @override
-  String get tavernDirectorStale => '这是之前的情况下想的，现在不一定合适，只供参考。';
+  String get tavernDirectorStale => '基于之前的剧情，仅供参考。';
 
   @override
   String tavernDirectorFailed(String reason) {
@@ -23012,7 +24269,7 @@ class L10nZh extends L10n {
   String get tavernRegexFieldName => '名字';
 
   @override
-  String get tavernRegexFieldFindHelp => 'SillyTavern 的写法：/规则/标志，比如 /(早安|晚安)/gi';
+  String get tavernRegexFieldFindHelp => '写法 /规则/标志，如 /(早安|晚安)/gi';
 
   @override
   String get tavernRegexFieldReplaceHelp => '\$1 是第一组，{{match}} 是整段匹配';
@@ -23057,7 +24314,7 @@ class L10nZh extends L10n {
   String get tavernRegexPhaseBoth => '显示和发出';
 
   @override
-  String get tavernRegexPhaseNote => '原文：直接改写存下来的消息。只改显示：存档不变，只是看起来不同。只改发出：只改发给模型的那一份。';
+  String get tavernRegexPhaseNote => '原文：改写存下的消息；只改显示：存档不变；只改发出：只改发给模型的那份';
 
   @override
   String get tavernRegexMinDepth => '最浅';
@@ -23106,7 +24363,7 @@ class L10nZh extends L10n {
 
   @override
   String tavernCardScriptsHint(int count) {
-    return '这张卡带了 $count 个脚本，打开「整页画布（试用）」才会运行';
+    return '$count 个卡片脚本要在整页画布里运行';
   }
 
   @override
@@ -23116,7 +24373,7 @@ class L10nZh extends L10n {
   String get tavernRender => '显示方式';
 
   @override
-  String get tavernRenderSubtitle => '只管这个角色的单人对话：卡里的状态栏、美化要选网页或画布才显示，脚本只在画布里运行';
+  String get tavernRenderSubtitle => '只管这个角色的单人对话。状态栏、美化要选网页或画布，脚本只在画布里运行';
 
   @override
   String get tavernRenderText => '文字';
@@ -23133,6 +24390,12 @@ class L10nZh extends L10n {
 
   @override
   String get tavernCanvasReloaded => '画面重新加载了';
+
+  @override
+  String get tavernLowPower => '省电渲染';
+
+  @override
+  String get tavernLowPowerSubtitle => '去掉卡片网页里的模糊和循环动画，手机更流畅';
 
   @override
   String tavernGroupSpeaking(String name) {
@@ -23157,7 +24420,7 @@ class L10nZh extends L10n {
   String get tavernGroupMembers => '谁在里面';
 
   @override
-  String get tavernGroupMembersNote => '按点选的顺序排；第一个是主持，故事共用的状态记在它的卡上。';
+  String get tavernGroupMembersNote => '按点选的顺序排，第一个是主持';
 
   @override
   String get tavernGroupHost => '主持';
@@ -23184,7 +24447,7 @@ class L10nZh extends L10n {
   String get tavernGroupDirector => '导演';
 
   @override
-  String get tavernGroupNaturalNote => '像 SillyTavern：被点到名的先说，其余看各自的话多话少；每轮最多几个人说在群设置里改。';
+  String get tavernGroupNaturalNote => '像 SillyTavern：被点到名的先说，其余看各自的话多话少';
 
   @override
   String get tavernGroupListOrderNote => '每轮按名单从头轮一遍（静音的跳过）。';
@@ -23223,17 +24486,17 @@ class L10nZh extends L10n {
   String get tavernGroupSettings => '群聊设置';
 
   @override
-  String get tavernGroupMaxSpeakers => '每轮最多几人说';
+  String get tavernGroupMaxSpeakers => '每轮最多几人';
 
   @override
   String get tavernGroupSelfResponses => '可以接着自己说';
 
   @override
-  String get tavernGroupSelfResponsesNote => '上一句是谁说的，这一轮还能先轮到他。';
+  String get tavernGroupSelfResponsesNote => '刚说完的人这一轮还能再说';
 
   @override
   String tavernGroupHostNote(String name) {
-    return '主持是「$name」：故事共用的状态、导演和秘密记在它的卡上；它可以不在发言名单里。';
+    return '主持是「$name」，故事共用的状态记在它的卡上';
   }
 
   @override
@@ -23702,9 +24965,6 @@ class L10nZh extends L10n {
   String get tavernDraftsForCard => '用 AI 改这张卡';
 
   @override
-  String get tavernDraftsForCardSubtitle => '在草稿里改，挑好再应用';
-
-  @override
   String get tavernDraftsEmpty => '还没有草稿';
 
   @override
@@ -23987,14 +25247,14 @@ class L10nZh extends L10n {
   String get tavernImportFromDeepSeek => '从 DeepSeek 接回来';
 
   @override
-  String get tavernImportFromDeepSeekSubtitle => '在 DeepSeek 的设置里导出全部历史对话，再选那个 ZIP';
+  String get tavernImportFromDeepSeekSubtitle => '选 DeepSeek 设置里导出的 ZIP';
 
   @override
   String get tavernDeepSeekTitle => '接回 DeepSeek 的对话';
 
   @override
   String tavernDeepSeekFound(int count) {
-    return '找到 $count 段对话，聊得最多的排在前面。勾上想接着聊的。';
+    return '找到 $count 段对话，勾上要接回来的';
   }
 
   @override
@@ -24036,10 +25296,18 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get tavernIslandStoryWaiting => '正在读取本条消息的数据…';
+
+  @override
+  String tavernIslandStoryFailed(String reason) {
+    return '本条消息的数据读取失败：$reason';
+  }
+
+  @override
   String get tavernPacks => '玩法包';
 
   @override
-  String get tavernPacksSubtitle => '装进来的玩法包；装上不等于启用，要在全局、角色或对话里加上才生效';
+  String get tavernPacksSubtitle => '装上后要在全局、角色或对话里加上才生效';
 
   @override
   String get tavernPacksEmpty => '还没有玩法包';
@@ -24078,9 +25346,6 @@ class L10nZh extends L10n {
 
   @override
   String get tavernPackScopeGlobal => '全局启用';
-
-  @override
-  String get tavernPackScopeGlobalSubtitle => '所有对话都用的玩法包';
 
   @override
   String get tavernPackScopeCharacter => '这个角色的玩法包';
@@ -24147,13 +25412,13 @@ class L10nZh extends L10n {
   String get tavernPackAddGlobal => '加到全局';
 
   @override
-  String get tavernPackAddNote => '只给某个角色或对话用，在角色页或对话的舞台面板里加';
+  String get tavernPackAddNote => '只给某个角色或对话：在角色页或舞台面板里加';
 
   @override
   String get tavernPackCast => '角色';
 
   @override
-  String get tavernPackCastNote => '导入会新建一个角色，不改原来的卡，也不会自动加进群聊';
+  String get tavernPackCastNote => '导入会新建角色，不改原来的卡';
 
   @override
   String get tavernPackCastFromCard => '完整角色卡';
@@ -24356,7 +25621,10 @@ class L10nZh extends L10n {
   String get tavernScripts => '脚本库';
 
   @override
-  String get tavernScriptsEmpty => '还没有全局脚本。导入酒馆助手导出的脚本 JSON，打开的脚本会在每个对话的整页画布里运行。';
+  String get tavernScriptsEmpty => '还没有全局脚本';
+
+  @override
+  String get tavernScriptsEmptyMessage => '可以导入酒馆助手导出的脚本 JSON，打开的在整页画布里运行';
 
   @override
   String get tavernScriptsImport => '导入脚本';
@@ -24404,7 +25672,7 @@ class L10nZh extends L10n {
   String get tavernChatScripts => '脚本';
 
   @override
-  String get tavernChatScriptsNote => '这段对话在整页画布里运行的脚本，按运行顺序。';
+  String get tavernChatScriptsNote => '按运行顺序';
 
   @override
   String get tavernScriptSourceGlobal => '全局';
@@ -24712,10 +25980,20 @@ class L10nZh extends L10n {
   String get usageUpgradeNotice => '新增匿名使用统计，帮助改进 DSH Go。\n不含对话和个人信息';
 
   @override
+  String get usageV4Welcome => '按日汇总使用和模型用量，不含对话。可随时关闭。';
+
+  @override
+  String get usageV4Notice => '匿名统计按日汇总功能结果、模型用量和异常退出，不含对话。';
+
+  @override
   String get usageUpgradeLearn => '了解';
 
   @override
   String get usageUpgradeOff => '关闭';
+
+  @override
+  String get usageStatsAndroidFooter =>
+      '这个开关只控制 dsh-go 自身的统计：各功能使用次数（含酒馆消息、伙伴小屋、语音通话）、模型回复报告的 token 数、版本、手机品牌和型号、系统版本，不含对话、角色卡、文件和账号；它不控制 Google ML Kit SDK 的统计。 Android 还按日汇总前台及首次参与统计、启动和远程连接结果与耗时区间，以及模型用量、插件执行、引导和系统确认的异常退出。关闭会清空未上报的数据。';
 
   @override
   String viewArtifactSaved(String value) {
