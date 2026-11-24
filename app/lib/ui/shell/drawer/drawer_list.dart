@@ -43,7 +43,7 @@ class DrawerConversationList extends ConsumerWidget {
   final void Function(SessionSummary session) onLongPress;
 
   /// Desktop right-click; falls back to [onLongPress]'s actions when absent.
-  final void Function(SessionSummary session)? onSecondaryTap;
+  final void Function(SessionSummary session, Offset position)? onSecondaryTap;
 
   /// Above everything when nothing is filtered or chosen (DS Bot's row).
   final Widget? leading;
@@ -101,7 +101,14 @@ class DrawerConversationList extends ConsumerWidget {
               : () => onLongPress(s),
           onSecondaryTap: readOnly || selecting
               ? null
-              : () => (onSecondaryTap ?? onLongPress)(s),
+              : (position) {
+                  final handler = onSecondaryTap;
+                  if (handler != null) {
+                    handler(s, position);
+                  } else {
+                    onLongPress(s);
+                  }
+                },
         ),
       );
     }

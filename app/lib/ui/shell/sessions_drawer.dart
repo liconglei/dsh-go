@@ -20,6 +20,7 @@ import '../../state/connection_state.dart';
 import '../../state/engine_control.dart';
 import '../../state/hosts_state.dart';
 import '../../state/drawer_view_state.dart';
+import '../../state/android_features.dart';
 import '../../state/session_attention_state.dart';
 import '../../state/session_deletion_state.dart';
 import '../../state/sessions_state.dart';
@@ -519,11 +520,23 @@ class _SessionList extends ConsumerWidget {
       if (scope.readOnly) return _Centered(child: Text(readListStatusText(scope.status)));
       return workspace == null ? const _EmptyState() : const _WorkspaceEmptyState();
     }
-    void openActions(SessionSummary s) {
+    bool valid(SessionSummary s) {
       final current = ref.read(drawerScopeProvider);
-      if (ref.read(readListIdentityProvider) == identity &&
+      return ref.read(readListIdentityProvider) == identity &&
           current?.readOnly == false &&
-          current!.sessions.any((row) => identical(row, s))) {
+          current!.sessions.any((row) => identical(row, s));
+    }
+
+    void openActions(SessionSummary s) {
+      if (valid(s)) _showActions(context, ref, s);
+    }
+
+    void openMenu(SessionSummary s, Offset position) {
+      if (!valid(s)) return;
+      final os = ref.read(operatingSystemProvider);
+      if (os == 'windows' || os == 'linux' || os == 'macos') {
+        unawaited(_showMenuActions(context, ref, s, position));
+      } else {
         _showActions(context, ref, s);
       }
     }
@@ -551,7 +564,7 @@ class _SessionList extends ConsumerWidget {
         onClose();
       },
       onLongPress: openActions,
-      onSecondaryTap: openActions,
+      onSecondaryTap: openMenu,
     );
   }
 
@@ -639,6 +652,19 @@ class _SessionList extends ConsumerWidget {
       ),
     );
     if (!context.mounted || action == null) return;
+    await _applyAction(context, ref, s, action, deletionOwner);
+  }
+
+  /// Runs a session action, shared by the touch action sheet and the desktop
+  /// right-click menu — both hand over the same string, so behaviour is identical.
+  Future<void> _applyAction(
+    BuildContext context,
+    WidgetRef ref,
+    SessionSummary s,
+    String action,
+    SessionDeletionOwner? deletionOwner,
+  ) async {
+    final title = sessionTitle(s);
     final messenger = ScaffoldMessenger.maybeOf(context);
     switch (action) {
       case 'pin' || 'unpin':
@@ -674,6 +700,76 @@ class _SessionList extends ConsumerWidget {
             s.sessionId,
           ], s.running ? appL10n.shellChatStoppedArchived(title) : appL10n.shellChatArchived(title)),
         );
+    }
+  }
+
+  /// Desktop right-click: a native-looking Material menu at [position].
+  /// Mirrors the touch action sheet's items but returns the same action strings.
+  Future<void> _showMenuActions(
+    BuildContext context,
+    WidgetRef ref,
+    SessionSummary s,
+    Offset position,
+  ) async {
+    final workspaces = ref.read(workspacesProvider);
+    final pinned = workspaces.pinnedSessionIds.contains(s.sessionId);
+    final inFolder = ref.read(drawerViewProvider).folderOf.containsKey(s.sessionId);
+    // Consent must predate the menu, same as the touch path.
+    final owner = captureSessionDeletionOwner(ref);
+    try {
+      final deleteEnabled = owner?.isCurrent(ref) == true &&
+          sessionDeletionDisabledReason(
+                context,
+                available: ref.read(sessionDeletionAvailableProvider),
+                busy: ref.read(sessionDeletionBusyProvider),
+                sessions: ref.watch(drawerScopeProvider)?.sessions ?? const <SessionSummary>[],
+                ids: [s.sessionId],
+              ) ==
+              null &&
+          ref.read(drawerScopeProvider)?.readOnly == false;
+      // Action sheet items carry a leading glyph; keep the same visual cue
+      // here so the desktop menu doesn't read as a plain text list.
+      PopupMenuItem<String> item(String value, IconData icon, String label, {bool destructive = false, bool enabled = true}) {
+        final color = destructive ? Theme.of(context).colorScheme.error : null;
+        return PopupMenuItem<String>(
+          value: value,
+          enabled: enabled,
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(width: 12),
+              Text(label, style: color == null ? null : TextStyle(color: color)),
+            ],
+          ),
+        );
+      }
+
+      final action = await showMenu<String>(
+        context: context,
+        position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+        items: [
+          if (workspaces.ready)
+            item(
+              pinned ? 'unpin' : 'pin',
+              pinned ? AppIcons.pinActive : AppIcons.pin,
+              pinned ? context.l10n.shellUnpin : context.l10n.commonPin,
+            ),
+          item('rename', AppIcons.rename, context.l10n.commonRename),
+          item(
+            'folder',
+            AppIcons.moveToFolder,
+            inFolder ? context.l10n.shellMoveToOtherFolder : context.l10n.shellMoveToFolder,
+          ),
+          item('share', AppIcons.share, context.l10n.commonShare),
+          item('select', AppIcons.multiSelect, context.l10n.shellMultiSelect),
+          item('archive', AppIcons.archive, context.l10n.shellArchive),
+          item('delete', AppIcons.delete, context.l10n.shellDeletePermanently, destructive: true, enabled: deleteEnabled),
+        ],
+      );
+      if (!context.mounted || action == null) return;
+      await _applyAction(context, ref, s, action, owner);
+    } finally {
+      owner?.close();
     }
   }
 

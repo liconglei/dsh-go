@@ -39,8 +39,8 @@ class SessionTile extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
-  /// Desktop right-click: opens the same actions as [onLongPress].
-  final VoidCallback? onSecondaryTap;
+  /// Desktop right-click, with the tap position for a native menu.
+  final void Function(Offset position)? onSecondaryTap;
   final PendingKind? pending;
   final bool unread;
 
@@ -116,7 +116,9 @@ class _SessionTileState extends State<SessionTile> {
           child: InkWell(
             onTap: widget.onTap,
             onLongPress: widget.onLongPress,
-            onSecondaryTap: widget.onSecondaryTap,
+            onSecondaryTapDown: widget.onSecondaryTap == null
+                ? null
+                : (details) => widget.onSecondaryTap!(details.globalPosition),
               customBorder: shape,
               // Ink (not a container's decoration), so the splash draws over the
               // fill; the fill fades in and out.
