@@ -26,6 +26,7 @@ class DrawerConversationList extends ConsumerWidget {
     super.key,
     required this.onOpen,
     required this.onLongPress,
+    this.onSecondaryTap,
     this.onNewChat,
     this.leading,
     this.now,
@@ -40,6 +41,9 @@ class DrawerConversationList extends ConsumerWidget {
 
   /// A conversation's actions.
   final void Function(SessionSummary session) onLongPress;
+
+  /// Desktop right-click; falls back to [onLongPress]'s actions when absent.
+  final void Function(SessionSummary session)? onSecondaryTap;
 
   /// Above everything when nothing is filtered or chosen (DS Bot's row).
   final Widget? leading;
@@ -95,6 +99,9 @@ class DrawerConversationList extends ConsumerWidget {
               : selecting
               ? () => selectionNotifier.toggle(id)
               : () => onLongPress(s),
+          onSecondaryTap: readOnly || selecting
+              ? null
+              : () => (onSecondaryTap ?? onLongPress)(s),
         ),
       );
     }

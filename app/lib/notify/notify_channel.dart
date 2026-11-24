@@ -331,11 +331,12 @@ class NotifyChannel {
     } on MissingPluginException {
       return const NotifySystemStatus.unavailable();
     } on PlatformException {
-      // Android's answer is only ever a stale one; a failure on HarmonyOS or iOS
-      // means it doesn't know, which mustn't read as every switch on.
-      return Platform.operatingSystem == 'ohos' || Platform.isIOS
-          ? const NotifySystemStatus.unavailable()
-          : const NotifySystemStatus();
+      // Android's answer is only ever a stale one; a failure on HarmonyOS, iOS
+      // or desktop means it doesn't know, which mustn't read as every switch on.
+      // Desktop has no dsh/notify channel, so enabled=true would be a false claim.
+      return Platform.isAndroid && Platform.operatingSystem != 'ohos'
+          ? const NotifySystemStatus()
+          : const NotifySystemStatus.unavailable();
     }
   }
 

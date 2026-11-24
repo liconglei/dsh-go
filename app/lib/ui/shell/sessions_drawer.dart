@@ -519,6 +519,15 @@ class _SessionList extends ConsumerWidget {
       if (scope.readOnly) return _Centered(child: Text(readListStatusText(scope.status)));
       return workspace == null ? const _EmptyState() : const _WorkspaceEmptyState();
     }
+    void openActions(SessionSummary s) {
+      final current = ref.read(drawerScopeProvider);
+      if (ref.read(readListIdentityProvider) == identity &&
+          current?.readOnly == false &&
+          current!.sessions.any((row) => identical(row, s))) {
+        _showActions(context, ref, s);
+      }
+    }
+
     return DrawerConversationList(
       now: now,
       onNewChat: onClose,
@@ -541,14 +550,8 @@ class _SessionList extends ConsumerWidget {
         ref.read(currentSessionProvider.notifier).select(id);
         onClose();
       },
-      onLongPress: (s) {
-        final current = ref.read(drawerScopeProvider);
-        if (ref.read(readListIdentityProvider) == identity &&
-            current?.readOnly == false &&
-            current!.sessions.any((row) => identical(row, s))) {
-          _showActions(context, ref, s);
-        }
-      },
+      onLongPress: openActions,
+      onSecondaryTap: openActions,
     );
   }
 

@@ -14,7 +14,7 @@ import '../sessions_drawer.dart' show sessionSelectionColor;
 /// most: what it waits for (待确认 / 待回答), a breathing dot while it works,
 /// or a quiet dot when it moved on since it was last seen. In multi-select a
 /// check slides in before the title.
-class SessionTile extends StatelessWidget {
+class SessionTile extends StatefulWidget {
   const SessionTile({
     super.key,
     required this.title,
@@ -22,6 +22,7 @@ class SessionTile extends StatelessWidget {
     required this.current,
     required this.onTap,
     required this.onLongPress,
+    this.onSecondaryTap,
     this.pending,
     this.unread = false,
     this.pinned = false,
@@ -37,6 +38,9 @@ class SessionTile extends StatelessWidget {
   final bool current;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Desktop right-click: opens the same actions as [onLongPress].
+  final VoidCallback? onSecondaryTap;
   final PendingKind? pending;
   final bool unread;
 
@@ -61,96 +65,112 @@ class SessionTile extends StatelessWidget {
   static const dot = 7.0;
 
   @override
+  State<SessionTile> createState() => _SessionTileState();
+}
+
+class _SessionTileState extends State<SessionTile> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final colors = DshColors.of(context);
     final shape = Squircle.border(AppShape.md);
-    final highlighted = selecting ? selected : current;
-    final Widget? marker = switch ((pending, running, unread)) {
+    final highlighted = widget.selecting ? widget.selected : widget.current;
+    // Hover fills below the selected/current fill so a pointer over an inert
+    // row reads as actionable without competing with the active conversation.
+    final fillTarget = highlighted ? 1.0 : (_hovered ? 0.45 : 0.0);
+    final Widget? marker = switch ((widget.pending, widget.running, widget.unread)) {
       (final PendingKind kind, _, _) => Text(
         kind.label,
         key: const ValueKey('pending'),
         style: theme.textTheme.labelMedium?.copyWith(color: colors.warning, fontWeight: FontWeight.w500),
       ),
-      (_, true, _) => const StatusDot(key: ValueKey('running'), tone: StatusTone.busy, size: dot),
+      (_, true, _) => const StatusDot(key: ValueKey('running'), tone: StatusTone.busy, size: SessionTile.dot),
       (_, _, true) => _UnreadDot(key: const ValueKey('unread'), color: scheme.onSurfaceVariant),
       _ => null,
     };
     final label = [
-      title,
-      ?pending?.label,
-      if (pending == null && running) l10n.shellCurrentlyRunning,
-      if (pending == null && !running && unread) l10n.shellUnread,
-      if (pinned) l10n.shellPinned,
+      widget.title,
+      ?widget.pending?.label,
+      if (widget.pending == null && widget.running) l10n.shellCurrentlyRunning,
+      if (widget.pending == null && !widget.running && widget.unread) l10n.shellUnread,
+      if (widget.pinned) l10n.shellPinned,
     ].join(l10n.shellSemanticsSeparator);
-    return Semantics(
-      selected: highlighted,
-      checked: selecting ? selected : null,
-      label: label,
-      button: true,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          customBorder: shape,
-          // Ink (not a container's decoration), so the splash draws over the
-          // fill; the fill fades in and out.
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: highlighted ? 1 : 0),
-            duration: AppMotion.of(context, AppMotion.quick),
-            curve: AppMotion.std,
-            builder: (context, t, child) {
-              final fill = sessionSelectionColor(context);
-              return Ink(
-                decoration: ShapeDecoration(
-                  color: fill.withValues(alpha: fill.a * t),
-                  shape: shape,
-                ),
-                height: height,
-                padding: EdgeInsets.only(left: 10 + indent, right: 10),
-                child: child,
-              );
-            },
-            child: Row(
-              children: [
-                _CheckSlot(selecting: selecting, selected: selected),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontSize: 15,
-                      height: 1.4,
-                      color: scheme.onSurface,
-                      fontWeight: current && !selecting ? FontWeight.w600 : FontWeight.w400,
+    // Hover fill reads as actionable on desktop; touch never emits hover.
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Semantics(
+        selected: highlighted,
+        checked: widget.selecting ? widget.selected : null,
+        label: label,
+        button: true,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        excludeSemantics: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
+            onSecondaryTap: widget.onSecondaryTap,
+              customBorder: shape,
+              // Ink (not a container's decoration), so the splash draws over the
+              // fill; the fill fades in and out.
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: fillTarget),
+                duration: AppMotion.of(context, AppMotion.quick),
+                curve: AppMotion.std,
+                builder: (context, t, child) {
+                  final fill = sessionSelectionColor(context);
+                  return Ink(
+                    decoration: ShapeDecoration(
+                      color: fill.withValues(alpha: fill.a * t),
+                      shape: shape,
                     ),
-                  ),
+                    height: SessionTile.height,
+                    padding: EdgeInsets.only(left: 10 + widget.indent, right: 10),
+                    child: child,
+                  );
+                },
+                child: Row(
+                  children: [
+                    _CheckSlot(selecting: widget.selecting, selected: widget.selected),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: 15,
+                          height: 1.4,
+                          color: scheme.onSurface,
+                          fontWeight: widget.current && !widget.selecting ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    if (widget.pinned) ...[
+                      const SizedBox(width: 8),
+                      Icon(AppIcons.pinActive, size: 14, color: colors.textTertiary),
+                    ],
+                    AnimatedSwitcher(
+                      duration: AppMotion.of(context, AppMotion.quick),
+                      layoutBuilder: (current, previous) =>
+                          Stack(alignment: Alignment.centerRight, children: [...previous, ?current]),
+                      child: marker == null
+                          ? const SizedBox.shrink(key: ValueKey('none'))
+                          : Padding(key: marker.key, padding: const EdgeInsets.only(left: 10), child: marker),
+                    ),
+                  ],
                 ),
-                if (pinned) ...[
-                  const SizedBox(width: 8),
-                  Icon(AppIcons.pinActive, size: 14, color: colors.textTertiary),
-                ],
-                AnimatedSwitcher(
-                  duration: AppMotion.of(context, AppMotion.quick),
-                  layoutBuilder: (current, previous) =>
-                      Stack(alignment: Alignment.centerRight, children: [...previous, ?current]),
-                  child: marker == null
-                      ? const SizedBox.shrink(key: ValueKey('none'))
-                      : Padding(key: marker.key, padding: const EdgeInsets.only(left: 10), child: marker),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

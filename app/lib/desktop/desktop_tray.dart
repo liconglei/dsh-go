@@ -32,8 +32,6 @@ class DesktopTray with TrayListener, WindowListener {
     _installed = true;
 
     await windowManager.ensureInitialized();
-    await windowManager.setPreventClose(true);
-    windowManager.addListener(this);
 
     final icon = await _findIcon();
     if (icon != null) await trayManager.setIcon(icon.path);
@@ -48,6 +46,12 @@ class DesktopTray with TrayListener, WindowListener {
       ),
     );
     trayManager.addListener(this);
+
+    // Intercept close only once the tray can bring the window back. If an
+    // icon/menu step above fails (swallowed by the caller), intercepting
+    // earlier would turn close into hide with no tray icon to restore from.
+    windowManager.addListener(this);
+    await windowManager.setPreventClose(true);
   }
 
   /// runner/resources 在 `flutter run`、exe 运行和安装版里的位置都不同，逐个试。
