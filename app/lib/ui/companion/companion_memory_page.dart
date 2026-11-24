@@ -1,13 +1,13 @@
 // Both room modes edit the same phone-owned memory store. A dialog keeps its
 // card/source revision; a stale save refreshes instead of overwriting a change.
 import 'dart:async';
-import 'dart:math';
 
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../companion/companion_memory.dart';
+import '../../companion/companion_memory_id.dart';
 import '../../companion/companion_widget.dart';
 import '../../l10n/l10n.dart';
 import '../common/app_dialog.dart';
@@ -21,21 +21,12 @@ import '../theme/semantic_colors.dart';
 
 const _maxLength = 512;
 
-/// A v4 UUID: memories are named by the client so a retried save can't add two.
-String companionMemoryId() {
-  final random = Random.secure();
-  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
-      '${hex.substring(16, 20)}-${hex.substring(20)}';
-}
-
 class CompanionMemoryPage extends ConsumerStatefulWidget {
-  const CompanionMemoryPage({super.key, required this.memory});
+  const CompanionMemoryPage({super.key, required this.memory, this.characterId});
 
   final CompanionMemoryOwner memory;
+  // A captured character, not a selector for all roles. Null means shared only.
+  final String? characterId;
 
   @override
   ConsumerState<CompanionMemoryPage> createState() => _CompanionMemoryPageState();
@@ -43,6 +34,9 @@ class CompanionMemoryPage extends ConsumerStatefulWidget {
 
 class _CompanionMemoryPageState extends ConsumerState<CompanionMemoryPage> {
   bool _busy = false;
+
+  /// 从通知看到的: only her notes from notifications, with where each came from.
+  bool _fromNotices = false;
 
   @override
   void initState() {
@@ -181,6 +175,44 @@ class _CompanionMemoryPageState extends ConsumerState<CompanionMemoryPage> {
     await _write((store) => store.deleteCard(id: row['id']! as String, expectedRowRev: row['row_rev']! as int));
   }
 
+  Future<void> _clearNotices() async {
+    final memory = widget.memory;
+    final ok = await showAppDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text(dialog.l10n.companionMemoryNoticesClearTitle),
+        content: Text(dialog.l10n.companionMemoryNoticesClearBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: Text(dialog.l10n.commonCancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: DshColors.of(dialog).danger,
+              foregroundColor: DshColors.of(dialog).onDanger,
+            ),
+            onPressed: () => Navigator.pop(dialog, true),
+            child: Text(dialog.l10n.companionMemoryNoticesClear),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || !identical(memory, widget.memory) || ok != true) return;
+    await _write((store) => store.clearNoticeMemories());
+  }
+
+  /// 微信 · 11月23日 14:05 for a note from a notification; null for any other card.
+  String? _noticeSource(MemoryRow row) {
+    if (row['source'] case {'kind': 'notice', 'app': final String app, 'observed_at_ms': final int at}) {
+      final local = DateTime.fromMillisecondsSinceEpoch(at).toLocal();
+      final material = MaterialLocalizations.of(context);
+      final time = material.formatTimeOfDay(
+        TimeOfDay.fromDateTime(local),
+        alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+      );
+      return '$app · ${material.formatShortMonthDay(local)} $time';
+    }
+    return null;
+  }
+
   Future<void> _action(String action, MemoryRow row) async {
     if (_busy) return;
     if (action == 'edit') return _edit(row);
@@ -190,8 +222,11 @@ class _CompanionMemoryPageState extends ConsumerState<CompanionMemoryPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cards = widget.memory.store.cards();
-    final Widget body = cards.isEmpty
+    final notices = widget.memory.store.noticeMemories();
+    // The filter goes with the last note: clearing them returns to all of her memory.
+    final fromNotices = _fromNotices && notices.isNotEmpty;
+    final cards = fromNotices ? notices : widget.memory.store.memoryPageCards(characterId: widget.characterId);
+    final Widget list = cards.isEmpty
         ? EmptyView(
             icon: AppIcons.bookmark,
             title: l10n.companionMemoryEmpty,
@@ -203,20 +238,73 @@ class _CompanionMemoryPageState extends ConsumerState<CompanionMemoryPage> {
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             children: [
               for (final row in cards)
-                SettingsTile(
-                  icon: AppIcons.bookmark,
-                  tinted: false,
-                  title: row['text']! as String,
-                  onTap: _busy ? null : () => _edit(row),
-                  trailing: PopupMenuButton<String>(
-                    enabled: !_busy,
-                    tooltip: l10n.companionMemoryActions,
-                    onSelected: (action) => unawaited(_action(action, row)),
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: 'edit', child: Text(l10n.companionMemoryEdit)),
-                      PopupMenuItem(value: 'forget', child: Text(l10n.companionMemoryForget)),
-                    ],
+                if (_noticeSource(row) case final source?)
+                  // What she saw in a notification is hers to forget, not to rewrite.
+                  SettingsTile(
+                    icon: AppIcons.mail,
+                    tinted: false,
+                    title: row['text']! as String,
+                    subtitle: source,
+                    trailing: PopupMenuButton<String>(
+                      enabled: !_busy,
+                      tooltip: l10n.companionMemoryActions,
+                      onSelected: (action) => unawaited(_action(action, row)),
+                      itemBuilder: (_) => [PopupMenuItem(value: 'forget', child: Text(l10n.companionMemoryForget))],
+                    ),
+                  )
+                else
+                  SettingsTile(
+                    icon: AppIcons.bookmark,
+                    tinted: false,
+                    title: row['text']! as String,
+                    subtitle: switch (row['layer']) {
+                      'diary' => '${l10n.companionMemoryDiary} · ${row['local_day']}',
+                      'impression' => l10n.companionMemoryImpression,
+                      _ => row['collection'] == 'person' ? l10n.companionMemoryPerson : l10n.companionMemoryCard,
+                    },
+                    onTap: _busy ? null : () => _edit(row),
+                    trailing: PopupMenuButton<String>(
+                      enabled: !_busy,
+                      tooltip: l10n.companionMemoryActions,
+                      onSelected: (action) => unawaited(_action(action, row)),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(value: 'edit', child: Text(l10n.companionMemoryEdit)),
+                        PopupMenuItem(value: 'forget', child: Text(l10n.companionMemoryForget)),
+                      ],
+                    ),
                   ),
+            ],
+          );
+    final Widget body = notices.isEmpty
+        ? list
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: SegmentedPill<bool>(
+                  key: const ValueKey('memory-filter'),
+                  segments: [
+                    PillSegment(false, l10n.companionMemoryAll),
+                    PillSegment(true, l10n.companionMemoryFromNotices),
+                  ],
+                  selected: fromNotices,
+                  onChanged: (value) => setState(() => _fromNotices = value),
+                  expand: true,
+                ),
+              ),
+              list,
+              if (fromNotices)
+                SheetGroup(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  children: [
+                    SettingsTile(
+                      tinted: false,
+                      danger: true,
+                      title: l10n.companionMemoryNoticesClear,
+                      onTap: _busy ? null : () => unawaited(_clearNotices()),
+                    ),
+                  ],
                 ),
             ],
           );

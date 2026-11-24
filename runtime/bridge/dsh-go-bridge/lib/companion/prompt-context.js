@@ -51,12 +51,13 @@ function cleanPhoneSession(session) {
   return true;
 }
 
+// The person's persona and names, at whatever length they wrote them.
 function profileOf(value) {
-  const limits = { persona: 4000, name: 24, callMe: 40, moves: 1024 };
-  if (!fields(value, Object.keys(limits))) throw invalid();
+  const keys = ['persona', 'name', 'callMe', 'moves'];
+  if (!fields(value, keys)) throw invalid();
   const result = {};
-  for (const [key, limit] of Object.entries(limits)) {
-    if (!text(value[key], limit) || (['name', 'callMe'].includes(key) && /[\r\n\t]/.test(value[key]))) throw invalid();
+  for (const key of keys) {
+    if (typeof value[key] !== 'string') throw invalid();
     result[key] = value[key].trim();
   }
   return Object.freeze(result);
@@ -167,6 +168,7 @@ export function createCompanionPromptContext({ now = Date.now, instanceId = rand
   const owner = message => message?.source?.kind === 'user' && message.source.principal === undefined;
   const expired = lease => highWater - lease.at > RECENT_MS;
   function prune(value) {
+    usage.expireUnclaimed(value.session, highWater - RECENT_MS);
     for (const map of [value.pending, value.parked]) {
       for (const [id, lease] of map) if (expired(lease)) map.delete(id);
     }
@@ -181,7 +183,7 @@ export function createCompanionPromptContext({ now = Date.now, instanceId = rand
   }
   const describe = value => ({ v: 1, supported: true, instanceId, sessionId: value.agent.id,
     profileRevision: value.revision, persistence: 'connection', requestBinding: 'rpcId',
-    maxEvents: 8, maxPersonaCodePoints: 4000,
+    maxEvents: 8,
     memoryMode: value.phone ? 'phone' : value.memoryDisabled ? 'automatic' : 'query', memoryEpoch: value.memoryEpoch,
     ...(phoneSupported(value.agent) ? { phoneMemory: true } : {}),
     ...(usageSupported(value.agent) ? { chatUsage: true } : {}) });
@@ -304,6 +306,7 @@ export function createCompanionPromptContext({ now = Date.now, instanceId = rand
       if (value.phoneMemory && usageSupported(agent)) usage.prepare(current.session, {
         sessionId: value.sessionId, requestId: value.requestId, archiveId: value.phoneMemory.archiveId,
         controlRevision: value.phoneMemory.controlRevision, historyAfterSeq: value.phoneMemory.historyAfterSeq,
+        preparedAt: receipt?.at ?? highWater,
       });
       return { ...describe(current), ...(value.profile ? {
         profileAccepted: JSON.stringify(current.profile) === JSON.stringify(value.profile) } : {}) };

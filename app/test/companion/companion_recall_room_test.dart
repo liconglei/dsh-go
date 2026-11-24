@@ -1,6 +1,7 @@
-// Phone-owned recall wiring through the real Page and ChatController.
-// Bridge responses, Session creation and the final prompt RPC are doubles;
-// SDK context parsing and the beforeDeliver path are production code.
+// Phone-owned memory and recall cleanup through the real Page, in full mode.
+// Bridge responses, Session creation and the model's HTTP answer (relayed by a
+// test Host, ADD67) are doubles; the phone tool loop, its Host reader and
+// receipt journal are production code.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -12,6 +13,7 @@ import 'package:dsh_app/companion/companion_state.dart';
 import 'package:dsh_app/l10n/gen/app_localizations.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
+import 'package:dsh_app/state/settings_state.dart';
 import 'package:dsh_app/ui/companion/companion_page.dart';
 import 'package:dsh_app/ui/companion/companion_stage.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
@@ -20,7 +22,12 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/companion_notes_peer.dart' show NotesPeer, hostAgentPath;
+import 'companion_test_settle.dart';
 
 const _store = '33333333-3333-4333-8333-333333333333';
 const _epoch = '44444444-4444-4444-8444-444444444444';
@@ -37,6 +44,10 @@ class _Bridge extends DshConnection {
   final prepared = <Map<String, Object?>>[];
   final revokes = <Map<String, Object?>>[];
   final binds = <Map<String, Object?>>[];
+
+  /// The full room's model route (ADD67): the room asks this Host, which
+  /// relays to the scripted model below.
+  NotesPeer? host;
 
   DshHttpResponse json(Object value, {int status = 200}) =>
       DshHttpResponse(status, 'application/json', Uint8List.fromList(utf8.encode(jsonEncode(value))));
@@ -67,6 +78,16 @@ class _Bridge extends DshConnection {
     bool followRedirects = true,
     int? maxResponseBytes,
   }) async {
+    if (path == hostAgentPath && host != null) {
+      return host!.connection.get(
+        path,
+        query: query,
+        headers: headers,
+        timeout: timeout,
+        followRedirects: followRedirects,
+        maxResponseBytes: maxResponseBytes,
+      );
+    }
     if (path.endsWith('/memories')) {
       return json({'v': 1, 'storeId': _store, 'revision': 0, 'memoryRevision': 0, 'memories': []});
     }
@@ -96,6 +117,21 @@ class _Bridge extends DshConnection {
       'state': {'valence': 0.25, 'energy': 0.75, 'closeness': 0, 'activity': 'idle'},
     });
   }
+
+  @override
+  Future<DshHttpStreamResponse> postJsonStream(
+    String path,
+    Object? body, {
+    required DshHttpAbort abort,
+    Duration? headerTimeout,
+    Duration? idleTimeout = const Duration(seconds: 20),
+  }) => host!.connection.postJsonStream(
+    path,
+    body,
+    abort: abort,
+    headerTimeout: headerTimeout,
+    idleTimeout: idleTimeout,
+  );
 
   @override
   Future<DshHttpResponse> postJson(String path, Object? body, {Duration? timeout}) async {
@@ -257,6 +293,25 @@ class _Client extends DshClient {
   }
 }
 
+class _Settings extends SettingsController {
+  @override
+  AppSettings build() => const AppSettings(loaded: true, apiKey: 'synthetic-test-key');
+}
+
+String _reply(String text) => [
+  {
+    'type': 'content_block_delta',
+    'index': 0,
+    'delta': {'type': 'text_delta', 'text': text},
+  },
+  {
+    'type': 'message_delta',
+    'delta': {'stop_reason': 'end_turn'},
+    'usage': {'input_tokens': 50, 'output_tokens': 5},
+  },
+  {'type': 'message_stop'},
+].map((event) => 'data: ${jsonEncode(event)}\n\n').join();
+
 class _Host extends ActiveHostController {
   @override
   HostRef build() => HostRef.local;
@@ -306,6 +361,21 @@ class _Room {
   late CompanionMemoryOwner memory;
   CompanionStageEvents? events;
 
+  /// The room's chat model, asked through the Host in full mode (ADD67).
+  final asked = <Map<String, Object?>>[];
+  String reply = '嗯，我在。';
+
+  /// An HTTP status for the next model request, or 'network'.
+  String? failNext;
+  void Function(Map<String, Object?>)? beforeModel;
+
+  /// The user's text in the last model request.
+  String lastAsked() {
+    final last = (asked.last['messages']! as List).last as Map;
+    final content = last['content'];
+    return content is String ? content : jsonEncode(content);
+  }
+
   Future<void> settle(WidgetTester tester) async {
     for (var i = 0; i < 6; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
@@ -313,7 +383,27 @@ class _Room {
     }
   }
 
+  http.Client model() => MockClient.streaming((request, body) async {
+    final sent = jsonDecode(await body.bytesToString()) as Map<String, Object?>;
+    asked.add(sent);
+    beforeModel?.call(sent);
+    final failure = failNext;
+    failNext = null;
+    if (failure == 'network') throw http.ClientException('fixture offline');
+    if (failure != null) return http.StreamedResponse(Stream.value(utf8.encode('{}')), int.parse(failure));
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(_reply(reply))),
+      200,
+      headers: {'content-type': 'text/event-stream; charset=utf-8'},
+    );
+  });
+
   Future<void> open(WidgetTester tester) async {
+    // A valid old Host has the text route but no agent turn.
+    bridge.host = (await tester.runAsync(NotesPeer.open))!;
+    bridge.host!.hostModel
+      ..model = model
+      ..agent = bridge.phoneMemory;
     tester.view.physicalSize = const Size(1080, 3200);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
@@ -327,6 +417,8 @@ class _Room {
           activeHostProvider.overrideWith(_Host.new),
           activeConnectionProvider.overrideWithValue(AsyncData(HostConnection(client: client, isLocal: true))),
           companionSessionsProvider.overrideWith(() => sessions),
+          settingsProvider.overrideWith(_Settings.new),
+          companionLightClientProvider.overrideWithValue(model),
         ],
         child: MaterialApp(
           theme: buildDarkTheme(),
@@ -349,7 +441,7 @@ class _Room {
     }
     expect(events, isNotNull);
     final container = ProviderScope.containerOf(tester.element(find.byType(CompanionPage)));
-    memory = (await tester.runAsync(() => container.read(companionMemoryOwnerProvider(root.absolute.path).future)))!;
+    memory = await settleMixed(tester, container.read(companionMemoryOwnerProvider(root.absolute.path).future));
     events!.onReady();
     await settle(tester);
     await tester.pump(const Duration(seconds: 8));
@@ -368,7 +460,8 @@ class _Room {
   Future<void> close(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 10));
-    await tester.runAsync(client.closeAll);
+    await settleMixed(tester, client.closeAll());
+    await tester.runAsync(bridge.host!.close);
   }
 }
 
@@ -386,78 +479,92 @@ void main() {
     root.deleteSync(recursive: true);
   });
 
-  for (final code in ['companion/memory-context-stale', 'companion/context-restarted']) {
-    testWidgets('$code retires only the binding, keeps the source and waits for an explicit resend', (tester) async {
+  // A1: full mode no longer prepares Host prompt context or calls the Host
+  // prompt RPC; phone memory goes into the phone model request itself. These
+  // keep the old intents on that path: a failed first request keeps the
+  // durable source for an explicit resend, nothing retries by itself, and the
+  // usage owner is recorded before anything leaves the phone.
+  for (final failure in ['500', 'network']) {
+    testWidgets('a $failure failure keeps the source and waits for an explicit resend of the same line', (
+      tester,
+    ) async {
       final room = _Room(root);
       await room.open(tester);
       try {
         await room.say(tester, '第一句');
-        expect(room.client.prompts, hasLength(1));
-        expect(room.sessions.created, 1);
-        expect(room.client.records['fresh-1'], hasLength(1));
-        room.bridge.restart();
-        expect(room.bridge.capability('fresh-1')['memoryMode'], 'query');
-        room.bridge.rejectPrepare = code;
+        expect(room.asked, hasLength(1));
+        expect(find.text('嗯，我在。'), findsOneWidget);
+        room.failNext = failure;
         const raw = '  重启后这句话\n';
         await room.say(tester, raw);
-        expect(room.client.prompts, hasLength(1), reason: 'a rejected prepare must never reach prompt');
-        expect(room.sessions.forgotten, 1);
-        expect(room.sessions.of(HostRef.local), isNull);
-        expect(find.textContaining('再点一次发送'), findsOneWidget);
+        expect(room.asked, hasLength(2));
+        expect(room.lastAsked(), contains(raw.trim()));
+        expect(find.text('这句话没送出去，要不要再说一次？'), findsOneWidget);
         expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, raw);
         final saved = Map<String, Object?>.from(room.memory.store.messages().last);
         expect(saved['text'], raw);
+        await tester.pump(const Duration(seconds: 30));
+        await room.settle(tester);
+        expect(room.asked, hasLength(2), reason: 'a failed request is not sent again by itself');
         await room.say(tester, raw);
-        expect(room.sessions.created, 2);
-        expect(room.client.prompts.last.session, 'fresh-2');
-        expect(room.client.prompts.last.text, raw);
-        expect(room.memory.store.messages(), hasLength(2));
-        expect(room.memory.store.messages().last['id'], saved['id']);
-        expect(room.memory.store.messages().last['first_seq'], saved['first_seq']);
-        expect(room.bridge.prepared.last['instanceId'], 'restarted-instance');
+        expect(room.asked, hasLength(3));
+        expect(room.lastAsked(), contains(raw.trim()));
+        final users = room.memory.store.messages().where((row) => row['role'] == 'user').toList();
+        expect(users, hasLength(2));
+        expect(users.last['id'], saved['id']);
+        expect(users.last['first_seq'], saved['first_seq']);
+        expect(room.client.prompts, isEmpty);
+        expect(room.bridge.prepared, isEmpty);
       } finally {
         await room.close(tester);
       }
     });
   }
 
-  testWidgets('another preparation conflict keeps its binding and does not silently retry the prompt', (tester) async {
-    final room = _Room(root);
+  testWidgets('a busy model answer keeps the source and does not silently retry', (tester) async {
+    final room = _Room(root)..failNext = '429';
     await room.open(tester);
     try {
-      room.bridge.rejectPrepare = 'companion/profile-conflict';
       await room.say(tester, '现况这句');
-      expect(room.client.prompts, isEmpty);
+      expect(find.text('那边有点忙，等一下再和我说吧。'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 30));
+      await room.settle(tester);
+      expect(room.asked, hasLength(1));
       expect(room.sessions.forgotten, 0);
-      expect(room.sessions.of(HostRef.local)?.sessionId, 'fresh-1');
       expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '现况这句');
       expect(room.memory.store.messages().single['text'], '现况这句');
+      expect(room.client.prompts, isEmpty);
     } finally {
       await room.close(tester);
     }
   });
 
-  testWidgets('the real beforeDeliver path persists usage ownership before calling the prompt RPC', (tester) async {
+  testWidgets('the phone loop persists its usage receipt before the model request leaves', (tester) async {
     final room = _Room(root)..bridge.chatUsage = true;
     await room.open(tester);
     var observed = false;
-    room.client.beforePrompt = (session, request) {
-      final delivery = room.memory.store.hostChatDeliveries().single;
-      expect(delivery['session_id'], session);
-      expect(delivery['request_id'], request);
-      expect(delivery['instance_id'], room.bridge.instance);
-      expect(delivery['archive_id'], room.memory.store.archive['id']);
-      expect(delivery['control_revision'], room.memory.store.archive['control_revision']);
-      expect(delivery['history_after_seq'], room.memory.store.archive['history_after_seq']);
-      expect(room.memory.store.requests(), isEmpty, reason: 'A delivery does not claim a physical model request');
+    room.beforeModel = (sent) {
+      final receipt = room.memory.store.requests().single;
+      expect(receipt['category'], 'chat');
+      expect(receipt['provider'], 'deepseek');
+      expect(receipt['model'], 'deepseek-flash');
+      expect(sent['model'], receipt['model']);
+      // Through the Host (ADD67) the phone records the handoff before its POST;
+      // the Host's own dispatch receipt then marks it sent.
+      expect(receipt['uncertain_at_ms'], isNotNull);
+      expect(receipt['raw_usage'], isNull, reason: 'nothing has come back yet');
       observed = true;
     };
     try {
       await room.say(tester, '这句先留好');
       expect(observed, isTrue);
-      expect(room.client.prompts, hasLength(1));
-      expect(room.memory.store.hostChatDeliveries(), hasLength(1));
-      expect(room.memory.store.requests(), isEmpty);
+      expect(room.asked, hasLength(1));
+      final receipt = room.memory.store.requests().single;
+      expect(receipt['sent_at_ms'], isNotNull);
+      expect(receipt['state'], 'finished');
+      expect(receipt['terminal'], 'complete');
+      expect(room.memory.store.hostChatDeliveries(), isEmpty);
+      expect(room.client.prompts, isEmpty);
     } finally {
       await room.close(tester);
     }
@@ -470,7 +577,7 @@ void main() {
     await room.open(tester);
     try {
       expect(
-        await tester.runAsync(() => room.memory.migrateHost(room.client).timeout(const Duration(seconds: 2))),
+        await settleMixed(tester, room.memory.migrateHost(room.client), limit: const Duration(seconds: 2)),
         isTrue,
         reason: 'a finished host migration must release its shared Future and allow a fresh complete read',
       );
@@ -481,12 +588,13 @@ void main() {
         realityKnown: true,
       );
       await room.say(tester, '想喝什么');
-      expect(room.client.prompts.single.text, '想喝什么');
-      expect(room.bridge.prepared.single.containsKey('phoneMemory'), isFalse);
-      expect(room.bridge.prepared.single.containsKey('query'), isFalse);
+      expect(room.asked, hasLength(1));
+      expect(room.lastAsked(), contains('想喝什么'));
+      expect(room.client.prompts, isEmpty);
+      expect(room.bridge.prepared, isEmpty, reason: 'no Host prompt context is prepared for phone chat');
       expect(find.textContaining('这次聊天用不上她已经记住的事'), findsNothing);
       expect(room.memory.store.cards().single['text'], '喜欢淡茶');
-      expect(room.memory.store.messages().single['text'], '想喝什么');
+      expect(room.memory.store.messages().where((row) => row['role'] == 'user').single['text'], '想喝什么');
       expect(room.bridge.binds, isEmpty, reason: 'unsupported phone context must not silently enable legacy recall');
     } finally {
       await room.close(tester);

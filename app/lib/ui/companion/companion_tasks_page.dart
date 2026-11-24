@@ -33,7 +33,7 @@ import '../workspace/directory_picker.dart';
 import 'companion_ask.dart';
 import 'companion_draft_inputs.dart';
 import 'companion_receipt_inputs.dart';
-import 'companion_memory_page.dart' show companionMemoryId;
+import '../../companion/companion_memory_id.dart';
 
 /// 「11月21日 08:00」 in this phone's local time; the year only when it is not this one.
 String _moment(L10n l10n, int epochMs) {
@@ -159,6 +159,7 @@ String companionReminderLine(L10n l10n, MemoryRow task, {required String? execut
   if (task['state'] == 'unknown') {
     return l10n.companionReminderUnknown;
   }
+  final set = task['state'] == 'done';
   return switch (task['wait_reason']) {
     'text_missing' => l10n.companionReminderTextMissing,
     'date_missing' => l10n.companionReminderDateMissing,
@@ -166,17 +167,18 @@ String companionReminderLine(L10n l10n, MemoryRow task, {required String? execut
     'zone_missing' => l10n.companionReminderZoneMissing,
     'time_gap' => l10n.companionReminderGap,
     'time_overlap' => l10n.companionReminderOverlap,
-    'exact_alarm_unavailable' => l10n.companionReminderExactMissing,
-    'notifications_disabled' => l10n.companionReminderNotificationsMissing,
-    'notification_channel_disabled' => l10n.companionReminderChannelMissing,
-    'notification_group_disabled' => l10n.companionReminderGroupMissing,
+    // These ride on a reminder that is already set (see CompanionReminderRunner).
+    'notifications_disabled' when set => l10n.companionReminderNotificationsMissing,
+    'notification_channel_disabled' when set => l10n.companionReminderChannelMissing,
+    'notification_group_disabled' when set => l10n.companionReminderGroupMissing,
     'time_passed' => l10n.companionReminderTimePassed,
     'invalid_time' => l10n.companionReminderInvalidTime,
     'cancellation_unconfirmed' => l10n.companionReminderCancelUnknown,
     _ => switch (task['state']) {
       'done' => l10n.companionReminderDone,
       'cancelled' => l10n.companionReminderCancelled,
-      'queued' || 'running' => l10n.companionReminderQueued,
+      // An older build left a permission stop here unset; its next run sets it.
+      'queued' || 'running' || 'waiting' => l10n.companionReminderQueued,
       _ => l10n.companionReminderFailed,
     },
   };
@@ -311,6 +313,7 @@ class CompanionTasksPage extends ConsumerStatefulWidget {
     super.key,
     this.memory,
     this.sourceSessionId,
+    this.allSessions = false,
     this.taskId,
     this.openedRevision,
     this.freshNotes = const [],
@@ -318,6 +321,10 @@ class CompanionTasksPage extends ConsumerStatefulWidget {
 
   final CompanionMemoryOwner? memory;
   final String? sourceSessionId;
+
+  /// The person's task-list entry can browse both phone and historical Host
+  /// conversations. A notification still opens only its original task ID.
+  final bool allSessions;
   final String? taskId;
   final int? openedRevision;
 
@@ -388,8 +395,8 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
       memory.addListener(_changed);
       try {
         final task = widget.taskId == null ? null : memory.store.task(widget.taskId!);
-        final rows = widget.taskId == null && widget.sourceSessionId != null
-            ? memory.store.tasks(sourceSessionId: widget.sourceSessionId, limit: _taskLimit)
+        final rows = widget.taskId == null && (widget.allSessions || widget.sourceSessionId != null)
+            ? memory.store.tasks(sourceSessionId: widget.allSessions ? null : widget.sourceSessionId, limit: _taskLimit)
             : const <MemoryRow>[];
         final mapsOnly = rows.isNotEmpty && rows.every((row) => row['kind'] == 'phone.map_open');
         final hostsOnly =
@@ -502,8 +509,8 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
         }
         return;
       }
-      final rows = selectedId == null && widget.sourceSessionId != null
-          ? memory.store.tasks(sourceSessionId: widget.sourceSessionId, limit: _taskLimit)
+      final rows = selectedId == null && (widget.allSessions || widget.sourceSessionId != null)
+          ? memory.store.tasks(sourceSessionId: widget.allSessions ? null : widget.sourceSessionId, limit: _taskLimit)
           : const <MemoryRow>[];
       if (rows.isNotEmpty &&
           rows.every(
@@ -526,7 +533,13 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
         return;
       }
       final row = widget.taskId == null ? null : memory.store.task(widget.taskId!);
-      final pending = row != null && (row['state'] == 'waiting' || row['state'] == 'unknown');
+      // A set reminder can still carry a notification switch to turn on;
+      // coming back from the system settings reads it again.
+      final pending =
+          row != null &&
+          (row['state'] == 'waiting' ||
+              row['state'] == 'unknown' ||
+              (row['state'] == 'done' && row['wait_reason'] != null));
       if (!resume && row != null && row['kind'] == 'public.lookup' && row['state'] == 'cancelled') {
         final read = memory.lookups.readReceipts(
           row,
@@ -850,7 +863,6 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
     );
     final reason = task['wait_reason'];
     final settings = switch (reason) {
-      'exact_alarm_unavailable' => 'exact',
       'notifications_disabled' || 'notification_channel_disabled' || 'notification_group_disabled' => 'notifications',
       _ => null,
     };
@@ -2771,6 +2783,10 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
     if (side['boundary'] case final MemoryRow boundary) {
       final before = boundary['beforeParagraph'];
       final after = boundary['afterParagraph'];
+      // The same neighbour on both sides: inside that paragraph.
+      if (before != null && before == after) {
+        return l10n.companionCompareParagraph('$before');
+      }
       if (before != null && after != null) {
         return l10n.companionCompareBetween('$before', '$after');
       }
@@ -2962,9 +2978,12 @@ class _CompanionTasksPageState extends ConsumerState<CompanionTasksPage> {
     final memory = _memory;
     final selectedId = _notesViewedId ?? _mapViewedId ?? widget.taskId;
     final task = memory == null || selectedId == null ? null : memory.store.task(selectedId);
-    final rows = memory == null || widget.sourceSessionId == null
+    final rows = memory == null || (!widget.allSessions && widget.sourceSessionId == null)
         ? <MemoryRow>[]
-        : memory.store.tasks(sourceSessionId: widget.sourceSessionId, limit: _taskLimit + 1);
+        : memory.store.tasks(
+            sourceSessionId: widget.allSessions ? null : widget.sourceSessionId,
+            limit: _taskLimit + 1,
+          );
     return AppPage.list(
       title: l10n.companionTasksTitle,
       actions: [

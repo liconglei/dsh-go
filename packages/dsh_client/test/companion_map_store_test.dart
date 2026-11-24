@@ -498,7 +498,7 @@ void main() {
     expect(store.messages().single['extraction_state'], 'pending');
   });
 
-  test('a genuine v13 database gains only the two map tables and retains earlier task rows and schemas', () {
+  test('a genuine v13 database gains the map and agent tables and retains earlier task rows and schemas', () {
     say('reminder', text: '提醒我带证件。');
     final prior = store.createReminderFromMessage(
       messageId: 'reminder',
@@ -520,16 +520,23 @@ void main() {
       isEmpty,
     );
     restart();
-    expect(database.select('PRAGMA user_version').single['user_version'], 14);
+    expect(database.select('PRAGMA user_version').single['user_version'], 17);
     expect(store.task(prior['task_id']! as String), prior);
+    // Tables that existed before the upgrade keep their schema, except the
+    // ones later versions deliberately alter. New tables are not compared.
+    const altered = {'memory_followups', 'memory_cards', 'memory_messages', 'memory_topics', 'memory_requests'};
+    final before = {for (final row in schema) row['name']};
     expect(
-      database
-          .select(
-            "SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-            "AND name NOT IN ('companion_map_revisions','companion_map_scopes') ORDER BY name",
-          )
-          .map((row) => Map<String, Object?>.from(row)),
-      schema,
+      [
+        for (final row in database.select(
+          "SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
+        ))
+          if (before.contains(row['name']) && !altered.contains(row['name'])) Map<String, Object?>.from(row),
+      ],
+      [
+        for (final row in schema)
+          if (!altered.contains(row['name'])) row,
+      ],
     );
     expect(database.select('SELECT * FROM companion_map_scopes'), isEmpty);
     expect(database.select('PRAGMA foreign_key_check'), isEmpty);
